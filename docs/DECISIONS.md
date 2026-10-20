@@ -13,6 +13,8 @@ Each record outlines the context, rationale, consequences, and trade-offs of sig
 - [ADR-003: Vitest for Unit Testing and Playwright for Multi-Viewport E2E Testing](#adr-003-vitest-for-unit-testing-and-playwright-for-multi-viewport-e2e-testing)
 - [ADR-004: Vanilla SCSS Design Tokens over External CSS Frameworks](#adr-004-vanilla-scss-design-tokens-over-external-css-frameworks)
 - [ADR-005: Built-in Angular Service Worker for Offline PWA Support](#adr-005-built-in-angular-service-worker-for-offline-pwa-support)
+- [ADR-006: Offline Python Pipeline with Committed Atlas JSON](#adr-006-offline-python-pipeline-with-committed-atlas-json)
+- [ADR-007: Canvas Points with d3 Zoom and an SVG Anchor Layer](#adr-007-canvas-points-with-d3-zoom-and-an-svg-anchor-layer)
 
 ---
 
@@ -129,6 +131,55 @@ Progressive Web Applications require service workers to cache application assets
 
 - **Positive**: Robust, hash-based asset cache invalidation; automatic background updates; official Angular tooling support.
 - **Trade-off**: Custom service worker logic (like Web Push or complex background sync) requires using extension hooks or integrating with Angular's service worker APIs.
+
+---
+
+## ADR-006: Offline Python Pipeline with Committed Atlas JSON
+
+### Status
+
+Accepted
+
+### Context
+
+The atlas needs Materials Project summary data for every material, rule-based categories, and a UMAP embedding. The official client (`mp-api`), pymatgen, and `umap-learn` are Python-only. A full pull takes minutes and needs a personal API key. UMAP on about 150k materials takes several more minutes. The site is hosted statically on GitHub Pages.
+
+### Decision
+
+- Run a Python pipeline (`pipeline/`) locally. It caches the raw API pull in git-ignored `pipeline/cache/summary.parquet`, keyed by the requested field list, and caches the UMAP embedding keyed by a hash of the features and parameters.
+- Commit the derived `public/data/atlas.json`: columnar arrays with quantized integer coordinates, rounded values, and category rules embedded as text so the UI documents exactly what was applied.
+- Serve the JSON as a static asset. The service worker caches it lazily (`data` asset group).
+
+### Consequences
+
+- **Positive**: No API key or Python in CI. The deployed site has no runtime dependency on the Materials Project API. Iterating on rules or the frontend never re-hits the API.
+- **Positive**: Rules live in one place (`categories.py`) and travel with the data.
+- **Trade-off**: Data freshness is manual. Re-run `build_atlas.py --refresh` after a new MP release and commit the output.
+- **Trade-off**: The JSON is several MB. GitHub Pages gzips it, and the columnar layout keeps it far smaller than row objects.
+
+---
+
+## ADR-007: Canvas Points with d3 Zoom and an SVG Anchor Layer
+
+### Status
+
+Accepted
+
+### Context
+
+The scatter holds about 150k points. One SVG element per point is too slow to zoom and pan smoothly, especially on phones.
+
+### Decision
+
+- Draw points on a `<canvas>`, batched by color group (largest group first so small groups stay visible), as squares at small radii and arcs when zoomed in.
+- Put an SVG layer on top for the construction-material anchors (d3 data join, greedy collision-avoiding labels) and to receive pointer events.
+- Use `d3-zoom` for pan and pinch, and a `d3-quadtree` over visible points for hover and tap hit-testing.
+- Overlays are exclusive color modes, and legend entries toggle group visibility. With five categories on one scatter, no categorical palette keeps every pair separable under color-vision deficiency (validated), so isolation via the legend is the secondary channel.
+
+### Consequences
+
+- **Positive**: Smooth interaction at full dataset size. d3 is imported by name, so only the modules used are bundled; the initial bundle stays within the 500 kB budget (about 340 kB raw).
+- **Trade-off**: Canvas marks are not in the accessibility tree. The coverage table and the anchor list provide the text alternative.
 
 ---
 

@@ -14,7 +14,7 @@ interface BeforeInstallPromptEvent extends Event {
   styleUrl: './app.scss',
 })
 export class App implements OnInit, OnDestroy {
-  protected readonly title = signal('Angular PWA Starter');
+  protected readonly title = signal('Materials Coverage Atlas');
   protected readonly isOnline = signal(typeof navigator !== 'undefined' ? navigator.onLine : true);
   protected readonly canInstall = signal(false);
 

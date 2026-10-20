@@ -1,0 +1,8 @@
+mp-api>=0.45
+pymatgen>=2024.10
+pandas>=2.2
+pyarrow>=17
+numpy>=1.26
+umap-learn>=0.5.7
+mendeleev>=0.17
+pytest>=8

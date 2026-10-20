@@ -24,9 +24,9 @@ When creating a new project from this template, complete the following customiza
 
 ### 1. Rebrand Application Identity
 
-- [ ] Update `<title>`, `<meta name="description">`, and `<meta name="theme-color">` in `src/index.html`.
-- [ ] Update `title` signal in `src/app/app.ts`.
-- [ ] Update `name`, `short_name`, and `description` in `public/manifest.webmanifest`.
+- [x] Update `<title>`, `<meta name="description">`, and `<meta name="theme-color">` in `src/index.html`.
+- [x] Update `title` signal in `src/app/app.ts`.
+- [x] Update `name`, `short_name`, and `description` in `public/manifest.webmanifest`.
 
 ### 2. Replace Icons and Visual Assets
 
@@ -35,9 +35,9 @@ When creating a new project from this template, complete the following customiza
 
 ### 3. Replace Placeholder Views
 
-- [ ] Replace `src/app/home/` with your application's domain UI and primary views.
-- [ ] Retain or adapt `src/app/status/` as an internal diagnostic and environment verification screen.
-- [ ] Update route definitions in `src/app/app.routes.ts`.
+- [x] Replace `src/app/home/` with your application's domain UI and primary views.
+- [x] Retain or adapt `src/app/status/` as an internal diagnostic and environment verification screen.
+- [x] Update route definitions in `src/app/app.routes.ts`.
 
 ### 4. Implement Domain State & Persistence
 
@@ -51,8 +51,8 @@ When creating a new project from this template, complete the following customiza
 
 ### 6. Expand Test Suites
 
-- [ ] Add unit tests for new services and components in `src/app/**/*.spec.ts`.
-- [ ] Update `e2e/smoke.spec.ts` with domain-specific smoke assertions and critical user journeys.
+- [x] Add unit tests for new services and components in `src/app/**/*.spec.ts`.
+- [x] Update `e2e/smoke.spec.ts` with domain-specific smoke assertions and critical user journeys.
 
 ---
 

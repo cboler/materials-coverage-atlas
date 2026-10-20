@@ -1,70 +1,92 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
-import { HomeComponent } from './home/home.component';
+import { AtlasComponent } from './atlas/atlas.component';
+import { FIXTURE } from './atlas/atlas-fixture';
 import { StatusComponent } from './status/status.component';
 import { routes } from './app.routes';
 
-describe('Starter Application Tests', () => {
+function mockFetch(response: Response) {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+}
+
+describe('Application Tests', () => {
   beforeEach(async () => {
+    mockFetch(new Response('not found', { status: 404 }));
     await TestBed.configureTestingModule({
-      imports: [App, HomeComponent, StatusComponent],
+      imports: [App, AtlasComponent, StatusComponent],
       providers: [provideRouter(routes)],
     }).compileComponents();
   });
 
+  afterEach(() => vi.restoreAllMocks());
+
   describe('App Shell', () => {
-    it('should create the root shell', () => {
-      const fixture = TestBed.createComponent(App);
-      const app = fixture.componentInstance;
-      expect(app).toBeTruthy();
-    });
-
-    it('should render the starter brand title', async () => {
+    it('should render the brand title', async () => {
       const fixture = TestBed.createComponent(App);
       await fixture.whenStable();
       const compiled = fixture.nativeElement as HTMLElement;
-      expect(compiled.querySelector('.brand-title')?.textContent).toContain('Angular PWA Starter');
+      expect(compiled.querySelector('.brand-title')?.textContent).toContain(
+        'Materials Coverage Atlas',
+      );
     });
 
-    it('should render accessible navigation links for Home and Status', async () => {
+    it('should render accessible navigation links and skip link', async () => {
       const fixture = TestBed.createComponent(App);
       await fixture.whenStable();
       const compiled = fixture.nativeElement as HTMLElement;
-      expect(compiled.querySelector('#nav-link-home')?.textContent?.trim()).toBe('Home');
+      expect(compiled.querySelector('#nav-link-home')?.textContent?.trim()).toBe('Atlas');
       expect(compiled.querySelector('#nav-link-status')?.textContent?.trim()).toBe('Status');
-    });
-
-    it('should render skip link for accessibility', async () => {
-      const fixture = TestBed.createComponent(App);
-      await fixture.whenStable();
-      const compiled = fixture.nativeElement as HTMLElement;
-      const skipLink = compiled.querySelector('.skip-link');
-      expect(skipLink).toBeTruthy();
-      expect(skipLink?.getAttribute('href')).toBe('#main-content');
+      expect(compiled.querySelector('.skip-link')?.getAttribute('href')).toBe('#main-content');
     });
   });
 
-  describe('HomeComponent', () => {
-    it('should render hero title and action buttons', async () => {
-      const fixture = TestBed.createComponent(HomeComponent);
+  describe('AtlasComponent', () => {
+    it('should explain how to generate data when atlas.json is missing', async () => {
+      const fixture = TestBed.createComponent(AtlasComponent);
       await fixture.whenStable();
+      fixture.detectChanges();
       const compiled = fixture.nativeElement as HTMLElement;
-      expect(compiled.querySelector('#starter-title')?.textContent).toBe('Angular PWA Starter');
-      expect(compiled.querySelector('#view-status-btn')).toBeTruthy();
+      expect(compiled.querySelector('#atlas-title')?.textContent).toContain('coverage atlas');
+      expect(compiled.querySelector('#atlas-missing')?.textContent).toContain('build_atlas.py');
     });
 
-    it('should display starter capabilities cards', async () => {
-      const fixture = TestBed.createComponent(HomeComponent);
+    it('should render overlays, legend, anchors, coverage table and rules from data', async () => {
+      vi.restoreAllMocks();
+      mockFetch(new Response(JSON.stringify(FIXTURE), { status: 200 }));
+      const fixture = TestBed.createComponent(AtlasComponent);
       await fixture.whenStable();
+      fixture.detectChanges();
       const compiled = fixture.nativeElement as HTMLElement;
-      const cards = compiled.querySelectorAll('.feature-card');
-      expect(cards.length).toBe(4);
+
+      expect(compiled.querySelectorAll('.toolbar .chip')).toHaveLength(5);
+      expect(compiled.querySelectorAll('.legend-item')).toHaveLength(5);
+      expect(compiled.querySelector('.anchor-list')?.textContent).toContain('Corundum');
+      expect(compiled.querySelectorAll('tbody tr')).toHaveLength(6);
+      expect(compiled.querySelector('.rules')?.textContent).toContain('stiff');
+
+      (compiled.querySelector('#overlay-elastic') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const labels = [...compiled.querySelectorAll('.legend-label')].map((e) => e.textContent);
+      expect(labels).toEqual(['Has elastic data', 'No elastic data']);
+    });
+
+    it('should show the detail card when an anchor is selected', async () => {
+      vi.restoreAllMocks();
+      mockFetch(new Response(JSON.stringify(FIXTURE), { status: 200 }));
+      const fixture = TestBed.createComponent(AtlasComponent);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      (compiled.querySelector('.anchor-list .link-button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(compiled.querySelector('#selected-detail')?.textContent).toContain('Al2O3');
     });
   });
 
   describe('StatusComponent', () => {
-    it('should create status component and render base uri diagnostic', async () => {
+    it('should render base uri diagnostic', async () => {
       const fixture = TestBed.createComponent(StatusComponent);
       await fixture.whenStable();
       const compiled = fixture.nativeElement as HTMLElement;
@@ -72,7 +94,6 @@ describe('Starter Application Tests', () => {
         'Runtime & Routing Verification',
       );
       expect(compiled.querySelector('#base-uri-val')).toBeTruthy();
-      expect(compiled.querySelector('#back-home-link')).toBeTruthy();
     });
   });
 });

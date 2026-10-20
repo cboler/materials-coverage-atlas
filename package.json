@@ -1,5 +1,5 @@
 {
-  "name": "angular-pwa-starter",
+  "name": "materials-coverage-atlas",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
@@ -23,6 +23,7 @@
     "@angular/platform-browser": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@angular/service-worker": "^22.1.0",
+    "d3": "^7.9.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -32,6 +33,7 @@
     "@angular/compiler-cli": "^22.1.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "@types/d3": "^7.4.3",
     "angular-eslint": "22.2.0",
     "eslint": "^10.9.0",
     "jsdom": "^28.0.0",

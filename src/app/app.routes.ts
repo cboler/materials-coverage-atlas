@@ -1,17 +1,17 @@
 import { Routes } from '@angular/router';
-import { HomeComponent } from './home/home.component';
+import { AtlasComponent } from './atlas/atlas.component';
 import { StatusComponent } from './status/status.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: HomeComponent,
-    title: 'Home • Angular PWA Starter',
+    component: AtlasComponent,
+    title: 'Materials Coverage Atlas',
   },
   {
     path: 'status',
     component: StatusComponent,
-    title: 'Status & Diagnostics • Angular PWA Starter',
+    title: 'Status & Diagnostics • Materials Coverage Atlas',
   },
   {
     path: '**',

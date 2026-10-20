@@ -1,0 +1,315 @@
+:host {
+  display: block;
+}
+
+.atlas-head h1 {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  margin-bottom: var(--space-2);
+}
+
+.lede {
+  max-width: 70ch;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.chip {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--bg-surface-elevated);
+  }
+
+  &.active {
+    color: var(--text-inverse);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    font-weight: 600;
+  }
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-4);
+
+  @media (min-width: 960px) {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+.plot {
+  position: relative;
+  height: clamp(340px, min(75vh, 115vw), 640px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  touch-action: none;
+
+  canvas,
+  .overlay-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .overlay-layer {
+    cursor: crosshair;
+  }
+}
+
+// d3-joined anchor marks live inside the SVG, outside Angular's view encapsulation.
+:host ::ng-deep .anchor {
+  pointer-events: none;
+
+  circle {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+  }
+
+  line {
+    stroke: var(--text-secondary);
+  }
+
+  text {
+    fill: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    paint-order: stroke;
+    stroke: var(--bg-canvas);
+    stroke-width: 3px;
+  }
+}
+
+.plot-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: var(--space-4);
+  margin: 0;
+
+  p {
+    margin: 0 0 var(--space-2);
+  }
+}
+
+.tooltip {
+  position: absolute;
+  transform: translate(14px, 14px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 230px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  pointer-events: none;
+
+  &.flip {
+    transform: translate(calc(-100% - 14px), 14px);
+  }
+}
+
+.reset {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border-color: var(--border-muted);
+  font-size: var(--font-size-xs);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  flex-shrink: 0;
+}
+
+.side-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: var(--space-4) 0 var(--space-2);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.legend,
+.anchor-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.legend-item {
+  width: 100%;
+  justify-content: flex-start;
+  background: none;
+  color: var(--text-primary);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+
+  &:hover {
+    background: var(--bg-surface-elevated);
+  }
+
+  &.off {
+    opacity: 0.4;
+  }
+}
+
+.legend-label {
+  flex: 1;
+  text-align: left;
+}
+
+.legend-count {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.link-button {
+  background: none;
+  color: var(--color-primary);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.anchor-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.note {
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-2);
+}
+
+.detail {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-1) var(--space-3);
+    margin: var(--space-3) 0 0;
+  }
+
+  dt {
+    color: var(--text-secondary);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.detail-title {
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-1);
+}
+
+.panel {
+  margin-top: var(--space-8);
+
+  h2 {
+    font-size: var(--font-size-lg);
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  td {
+    font-family: var(--font-mono);
+  }
+
+  .total th,
+  .total td {
+    font-weight: 600;
+    border-top: 1px solid var(--border-muted);
+  }
+}
+
+.rules {
+  display: grid;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--font-size-sm);
+
+  @media (min-width: 640px) {
+    grid-template-columns: max-content 1fr;
+  }
+
+  dt {
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0 0 var(--space-2);
+    color: var(--text-secondary);
+  }
+}
+
+.attribution {
+  margin-top: var(--space-8);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}

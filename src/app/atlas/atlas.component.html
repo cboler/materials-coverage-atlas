@@ -1,0 +1,232 @@
+<section class="atlas" aria-labelledby="atlas-title">
+  <header class="atlas-head">
+    <h1 id="atlas-title">Materials Project coverage atlas</h1>
+    <p class="lede">
+      @if (atlas(); as a) {
+        {{ a.meta.count | number }} materials from Materials Project {{ a.meta.database_version }},
+        laid out by UMAP over composition and property features. Similar materials sit close
+        together; color shows the active overlay.
+        @if (a.meta.sampled) {
+          <strong>(random sample)</strong>
+        }
+      } @else {
+        Every material in the Materials Project database, laid out by composition and properties.
+      }
+    </p>
+  </header>
+
+  <div class="toolbar" role="radiogroup" aria-label="Overlay">
+    @for (o of overlays; track o.id) {
+      <button
+        type="button"
+        role="radio"
+        class="chip"
+        [attr.aria-checked]="overlayId() === o.id"
+        [class.active]="overlayId() === o.id"
+        [id]="'overlay-' + o.id"
+        (click)="setOverlay(o.id)"
+      >
+        {{ o.label }}
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <div
+      class="plot"
+      #plot
+      role="img"
+      aria-label="Scatter plot of materials; see the coverage table below for a text summary"
+    >
+      <canvas #canvas aria-hidden="true"></canvas>
+      <svg #svg class="overlay-layer" aria-hidden="true"></svg>
+
+      @switch (state()) {
+        @case ('loading') {
+          <p class="plot-message">Loading atlas data…</p>
+        }
+        @case ('missing') {
+          <div class="plot-message" id="atlas-missing">
+            <p>No atlas data yet.</p>
+            <p>
+              Generate it with <code>python pipeline/build_atlas.py</code> (needs
+              <code>MP_API_KEY</code> for the first pull).
+            </p>
+          </div>
+        }
+        @case ('error') {
+          <p class="plot-message">Could not load <code>data/atlas.json</code>.</p>
+        }
+      }
+
+      @if (hoverDetail(); as d) {
+        <div
+          class="tooltip"
+          [class.flip]="tooltipAt().flip"
+          [style.left.px]="tooltipAt().x"
+          [style.top.px]="tooltipAt().y"
+          role="tooltip"
+        >
+          <strong>{{ d.formula }}</strong>
+          <span class="muted">{{ d.id }}{{ d.anchor ? ' · ' + d.anchor : '' }}</span>
+          <span><i class="swatch" [style.background]="d.color"></i>{{ d.category }}</span>
+          <span class="muted">
+            Gap {{ d.bandGap ?? '—' }} eV · E<sub>hull</sub> {{ d.eAboveHull ?? '—' }} eV/atom
+          </span>
+          <span class="muted">
+            {{ d.theoretical ? 'Theoretical' : 'Experimental' }} ·
+            {{ d.bulkModulus === null ? 'no elastic data' : 'K ' + d.bulkModulus + ' GPa' }}
+          </span>
+        </div>
+      }
+
+      @if (state() === 'ready') {
+        <button type="button" class="reset" (click)="resetZoom()">Reset view</button>
+      }
+    </div>
+
+    <aside class="side" aria-label="Legend and details">
+      <h2 class="side-title">Legend</h2>
+      <ul class="legend">
+        @for (g of groups(); track g.key) {
+          <li>
+            <button
+              type="button"
+              class="legend-item"
+              [class.off]="hidden().has(g.key)"
+              [attr.aria-pressed]="!hidden().has(g.key)"
+              (click)="toggleGroup(g.key)"
+            >
+              <i class="swatch" [style.background]="g.color"></i>
+              <span class="legend-label">{{ g.label }}</span>
+              <span class="legend-count">{{ g.indices.length | number }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+      @if (hidden().size) {
+        <button type="button" class="link-button" (click)="showAll()">Show all</button>
+      }
+      <p class="note">{{ overlayNote() }}</p>
+
+      @if (selectedDetail(); as d) {
+        <div class="detail" id="selected-detail">
+          <h2 class="detail-title">
+            {{ d.formula }}
+            @if (d.anchor) {
+              <span class="muted">· {{ d.anchor }}</span>
+            }
+          </h2>
+          <a [href]="d.url" target="_blank" rel="noopener noreferrer">{{ d.id }} ↗</a>
+          <dl>
+            <dt>Category</dt>
+            <dd>
+              <i class="swatch" [style.background]="d.color"></i>{{ d.category }}
+              @if (d.otherCategories.length) {
+                <span class="muted">(also {{ d.otherCategories.join(', ') }})</span>
+              }
+            </dd>
+            <dt>Status</dt>
+            <dd>{{ d.theoretical ? 'Theoretical' : 'Experimental' }}</dd>
+            <dt>Band gap</dt>
+            <dd>{{ d.bandGap ?? '—' }} eV</dd>
+            <dt>Formation energy</dt>
+            <dd>{{ d.formationEnergy ?? '—' }} eV/atom</dd>
+            <dt>E above hull</dt>
+            <dd>{{ d.eAboveHull ?? '—' }} eV/atom</dd>
+            <dt>Bulk / shear</dt>
+            <dd>
+              @if (d.bulkModulus !== null) {
+                {{ d.bulkModulus }} / {{ d.shearModulus }} GPa
+              } @else {
+                <span class="muted">no elastic data</span>
+              }
+            </dd>
+            <dt>Magnetic order</dt>
+            <dd>{{ d.ordering }}</dd>
+            <dt>Element cost</dt>
+            <dd>{{ d.cost === null ? '—' : '$' + fmt(d.cost) + '/kg' }}</dd>
+            <dt>Scarcest element</dt>
+            <dd>
+              {{ d.scarcest ?? '—' }}
+              @if (d.abundance !== null) {
+                <span class="muted">({{ fmt(d.abundance) }} ppm)</span>
+              }
+            </dd>
+          </dl>
+        </div>
+      }
+      @if (atlas(); as a) {
+        <h2 class="side-title">Construction anchors</h2>
+        <ul class="anchor-list">
+          @for (anchor of a.anchors; track anchor.material_id) {
+            <li>
+              <button type="button" class="link-button" (click)="selectAnchor(anchor.index)">
+                {{ anchor.name }}
+              </button>
+              <span class="muted">{{ a.columns.formula[anchor.index] }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+  </div>
+
+  @if (coverage().length) {
+    <section class="panel" aria-labelledby="coverage-title">
+      <h2 id="coverage-title">Coverage by category</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col">Materials</th>
+              <th scope="col">Experimental</th>
+              <th scope="col">Elastic data</th>
+              <th scope="col">Cost data</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of coverage(); track row.key) {
+              <tr [class.total]="row.key === 'all'">
+                <th scope="row">{{ row.label }}</th>
+                <td>{{ row.count | number }}</td>
+                <td>{{ row.experimentalPct | number: '1.0-1' }}%</td>
+                <td>{{ row.elasticPct | number: '1.0-1' }}%</td>
+                <td>{{ row.costPct | number: '1.0-1' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (rules().length) {
+    <section class="panel" aria-labelledby="rules-title">
+      <h2 id="rules-title">Category rules</h2>
+      <dl class="rules">
+        @for (rule of rules(); track rule.label) {
+          <dt>{{ rule.label }}</dt>
+          <dd>{{ rule.text }}</dd>
+        }
+      </dl>
+      <p class="note">
+        Screening heuristics applied to MP's computed values, not property predictions. MP band gaps
+        are GGA/GGA+U and typically underestimate experiment. Full rationale lives in
+        <code>pipeline/categories.py</code>.
+      </p>
+    </section>
+  }
+
+  <p class="attribution">
+    Data:
+    <a href="https://materialsproject.org" target="_blank" rel="noopener noreferrer">
+      Materials Project</a
+    >
+    (CC BY 4.0)
+    @if (atlas(); as a) {
+      · {{ a.meta.database_version }} · pulled {{ a.meta.fetched_at.slice(0, 10) }}
+    }
+  </p>
+</section>

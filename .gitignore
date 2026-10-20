@@ -47,3 +47,9 @@ test-results/
 .DS_Store
 Thumbs.db
 
+
+# Python data pipeline (the API cache is local-only; regenerate with pipeline/build_atlas.py)
+pipeline/cache/
+__pycache__/
+.pytest_cache/
+.venv/

@@ -4,20 +4,20 @@ These instructions apply to this repository and any downstream applications deri
 
 ## Repository Overview
 
-- **Product**: Angular PWA Starter — a clean, mobile-first Progressive Web Application template optimized for static hosting on GitHub Pages.
+- **Product**: Materials Coverage Atlas — an interactive d3.js map of the Materials Project database. Materials are embedded in 2D with UMAP, colored by rule-based candidate categories, and re-colorable by coverage overlays (abundance, cost, experimental vs. theoretical, elastic data). Construction materials are pinned as labeled anchors.
+- **Data Pipeline**: Offline Python in `pipeline/` (mp-api, pymatgen, UMAP) writes `public/data/atlas.json`, which is committed. The API cache lives in git-ignored `pipeline/cache/`. The deployed site never calls the API. See ADR-006.
+- **Rendering**: Points are drawn on a `<canvas>` (about 150k marks), anchors and labels on an SVG layer, d3 handles zoom and quadtree hit-testing. See ADR-007.
 - **Framework**: Angular (standalone components, inject-based dependency injection, and Angular Signals for reactive state).
 - **PWA & Deployment**: Angular Service Worker (`@angular/service-worker`, `ngsw-config.json`), Web App Manifest (`public/manifest.webmanifest`), dynamic subpath base-href, and SPA routing fallback (`scripts/prepare-pages.mjs` creating `404.html`) via GitHub Actions (`.github/workflows/deploy.yml`).
 - **Architecture Style**: Client-side single-page application with zero server-side runtime dependency. Designed to be branched or forked into specific application domains.
-
-> **For Derivations**: When building a new application from this starter, customize this section with your product name, domain description, and application-specific architecture.
 
 ---
 
 ## Map of Code
 
 ```
-angular-pwa-starter/
-├── .github/workflows/       # CI validation and GitHub Pages automated deployment
+materials-coverage-atlas/
+├── .github/workflows/       # CI, GitHub Pages deploy, and Build Atlas Data (runs pipeline with MP_API_KEY secret)
 ├── docs/                    # Architecture, ADRs, roadmaps, and execution plans
 │   ├── ARCHITECTURE.md      # Detailed system architecture and derivation guide
 │   ├── DECISIONS.md         # Architectural Decision Records (ADRs)
@@ -27,7 +27,15 @@ angular-pwa-starter/
 │       └── completed/       # Archived, verified execution plans
 ├── e2e/                     # Playwright cross-viewport smoke test suite
 │   └── smoke.spec.ts        # Mobile portrait/landscape, tablet, and desktop tests
+├── pipeline/                # Python data pipeline (run locally; needs MP_API_KEY on first pull)
+│   ├── fetch.py             # mp-api summary pull + local parquet cache
+│   ├── categories.py        # Documented rule-based candidate categories
+│   ├── supply.py            # Element abundance/cost rolled up per material
+│   ├── embed.py             # Composition + property features, cached UMAP
+│   ├── build_atlas.py       # Orchestrates everything, resolves anchors, writes atlas.json
+│   └── test_categories.py   # pytest rule tests
 ├── public/                  # Source-controlled static assets
+│   ├── data/atlas.json      # Generated atlas data (columnar JSON, committed)
 │   ├── icons/               # PWA icons (72x72 through 512x512, maskable)
 │   ├── favicon.ico          # Browser tab favicon
 │   └── manifest.webmanifest # Web App Manifest identity and theme configuration
@@ -35,7 +43,7 @@ angular-pwa-starter/
 │   └── prepare-pages.mjs    # Generates 404.html SPA fallback for GitHub Pages
 ├── src/                     # Application source code
 │   ├── app/
-│   │   ├── home/            # Starter placeholder home component (replace in derivations)
+│   │   ├── atlas/           # Atlas view: d3/canvas scatter, overlays, legend, coverage table
 │   │   ├── status/          # PWA diagnostic & base-href verification component
 │   │   ├── app.config.ts    # Application providers (router, service worker, global error listeners)
 │   │   ├── app.routes.ts    # Application route definitions
@@ -53,7 +61,15 @@ angular-pwa-starter/
 
 ## Commands & Quality Gates
 
-Prerequisites: Node.js 22+ and npm 10+.
+Prerequisites: Node.js 22+ and npm 10+. For the data pipeline: Python 3.11+ and `pip install -r pipeline/requirements.txt`.
+
+```bash
+# Regenerate public/data/atlas.json (reads pipeline/cache after the first API pull)
+python pipeline/build_atlas.py [--refresh] [--sample N]
+
+# Category rule tests
+pytest pipeline
+```
 
 ```bash
 # Install dependencies reproducibly from lockfile

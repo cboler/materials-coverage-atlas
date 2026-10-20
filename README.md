@@ -1,136 +1,123 @@
-# Angular PWA Starter
+# Materials Coverage Atlas
 
-A clean, production-ready, mobile-first **Angular PWA** template repository pre-configured for automated deployment to **GitHub Pages**.
+An interactive d3.js atlas of the [Materials Project](https://materialsproject.org) database.
+Every material is placed on a 2D map by UMAP over composition and property features, colored by
+a rule-based candidate category, and can be re-colored by overlays that show where the database's
+coverage is thin.
 
-## Purpose
+- **Categories**: structural, energy, electronic/optical, magnetic, unclassified. The rules are
+  documented in [`pipeline/categories.py`](pipeline/categories.py) and shown in the app.
+- **Overlays**: element abundance, element cost, experimental vs. theoretical, and elastic-data
+  coverage (which entries lack bulk/shear moduli).
+- **Anchors**: calcite, gypsum, portlandite, alite, belite, quartz, corundum, iron and aluminum
+  are pinned and labeled as reference points.
+- **Coverage table**: per category, the share of entries that are experimentally observed, have
+  elastic data, or have cost data.
 
-Starting a modern Angular Progressive Web Application hosted on GitHub Pages typically requires solving several subtle integration hurdles:
-
-- Service worker caching and offline startup behavior
-- Dynamic subpath base href configuration when hosted on `https://<owner>.github.io/<repo>/`
-- Client-side SPA routing fallback on GitHub Pages (preventing 404s on refresh)
-- Mobile-first CSS foundation, touch targets, safe-area insets, and accessibility defaults
-- Multi-viewport smoke tests and linting gates
-
-This template provides a production-quality, minimal foundation solving these infrastructure requirements out-of-the-box so you can focus immediately on your application.
-
----
-
-## Creating a New Project
-
-To create your own application from this starter:
-
-1. Click the green **"Use this template"** button at the top of this GitHub repository and select **"Create a new repository"**.
-2. Choose your repository name (e.g., `my-angular-app`).
-3. Clone your newly created repository locally:
-   ```bash
-   git clone https://github.com/<your-username>/<your-repo-name>.git
-   cd <your-repo-name>
-   ```
-4. Install dependencies:
-   ```bash
-   npm ci
-   ```
-5. In your GitHub repository settings under **Settings > Pages**, set **Build and deployment > Source** to **GitHub Actions**.
-6. When you push to `main`, the automated workflow builds and deploys your PWA to `https://<your-username>.github.io/<your-repo-name>/`.
+Built on [angular-pwa-starter](https://github.com/cboler/angular-pwa-starter): Angular 22, static
+hosting on GitHub Pages, installable PWA.
 
 ---
 
-## Local Development
+## How it fits together
 
-Start the local development server:
+```
+Materials Project API ──► pipeline/ (Python, run locally) ──► public/data/atlas.json ──► Angular + d3 app
+                              │
+                              └─ pipeline/cache/ (git-ignored local API cache)
+```
+
+The site is static. The Python pipeline runs on your machine, and its output
+(`public/data/atlas.json`) is committed, so the deployed site never calls the API and never needs
+your key.
+
+### 1. Generate the data
+
+Requires Python 3.11+ and a Materials Project API key in `MP_API_KEY`.
 
 ```bash
+python -m venv .venv
+.venv/Scripts/activate        # macOS/Linux: source .venv/bin/activate
+pip install -r pipeline/requirements.txt
+python pipeline/build_atlas.py
+```
+
+- The first run pulls summary data for every material (formula, elements, band gap, formation
+  energy, energy above hull, theoretical flag, magnetic ordering, bulk/shear moduli, symmetry,
+  density) and caches it in `pipeline/cache/summary.parquet`. Later runs read the cache and
+  never call the API. Pass `--refresh` to re-pull.
+- The UMAP embedding is cached too, keyed by the feature matrix and UMAP parameters, so changing
+  category rules does not re-run UMAP.
+- `--sample 20000` embeds a random subset (anchors are always kept) for fast iteration.
+- Run the rule tests with `pytest pipeline`.
+- On Python 3.15, `mendeleev` still declares `<3.15`. It is pure Python and works fine; install
+  it with `pip install --ignore-requires-python "mendeleev>=0.17"` after installing the rest.
+
+**Or build it in GitHub Actions.** Add your key as the `MP_API_KEY` repository secret, then run
+**Actions → Build Atlas Data**. The workflow runs the pipeline, commits `public/data/atlas.json`,
+and redeploys Pages. The API pull and embedding are kept in the Actions cache between runs.
+
+### 2. Run the app
+
+```bash
+npm ci
 npm start
 ```
 
-Navigate to `http://localhost:4200/` in your browser. The app will automatically reload when you modify source files.
+Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows setup instructions.
 
 ---
 
-## Validation & Developer Commands
+## Using the atlas
 
-Run all quality gates and tests:
+- **Scroll or pinch** to zoom and **drag** to pan. **Reset view** restores the full map.
+- **Hover** a point for a summary. **Click or tap** it to pin details, with a link to its
+  Materials Project page.
+- **Overlay buttons** recolor the map. **Legend entries** hide or show a group. With five
+  categories on one scatter, no palette keeps every pair distinct under color-vision deficiency,
+  so isolating groups from the legend is the reliable way to compare them.
+- **Construction anchors** in the side panel select the pinned reference materials.
 
-| Command                | Purpose                                                                          |
-| :--------------------- | :------------------------------------------------------------------------------- |
-| `npm start`            | Runs Angular local dev server (`ng serve`)                                       |
-| `npm run build`        | Builds production application with bundle size checks                            |
-| `npm run build:pages`  | Builds production application and generates GitHub Pages `404.html` SPA fallback |
-| `npm test`             | Executes unit tests via Vitest (`ng test --watch=false`)                         |
-| `npm run lint`         | Runs ESLint analysis via Angular ESLint (`ng lint`)                              |
-| `npm run format`       | Formats codebase using Prettier                                                  |
-| `npm run format:check` | Verifies code formatting compliance                                              |
-| `npm run e2e`          | Runs Playwright smoke suite across phone, tablet, and desktop viewports          |
+### Caveats
 
----
-
-## GitHub Pages Deployment
-
-Deployment is fully automated via GitHub Actions (`.github/workflows/deploy.yml`).
-
-### Repository-Name Independence
-
-The workflow dynamically resolves your repository's subpath using `actions/configure-pages@v5`:
-
-```bash
-npm run build -- --base-href ${{ steps.pages.outputs.base_path }}/
-```
-
-- User/Organization Pages (`https://<owner>.github.io/`) receive `--base-href /`
-- Project Pages (`https://<owner>.github.io/<repo>/`) receive `--base-href /<repo>/`
-
-You never need to hardcode the repository name or your GitHub username.
-
-### SPA Client-Side Routing Fallback
-
-GitHub Pages is a static host that returns a 404 response when a user directly navigates to or refreshes a client-side route (such as `/status`).
-
-During deployment, `scripts/prepare-pages.mjs` duplicates the generated `dist/browser/index.html` to `dist/browser/404.html`. When GitHub Pages encounters a direct route request, it serves `404.html` with the Angular application bundle and the correct `<base href>`, allowing Angular Router to take control and display the requested route without error.
+- Categories are screening heuristics on computed values, not property predictions. MP band
+  gaps are GGA/GGA+U and typically underestimate experiment.
+- Magnetic ordering comes from MP calculations that are initialized ferromagnetic, so many
+  transition-metal compounds report FM even where experiment finds antiferromagnetism. The
+  magnetic category is correspondingly generous (about a fifth of the database).
+- Elastic moduli exist for only a small fraction of entries, so "structural" can only be assigned
+  where that data exists. The elastic-coverage overlay shows the gap.
+- Element cost is the mass-weighted raw element price. It ignores processing, so treat it as a
+  floor. Abundance is the crustal abundance of the scarcest element in the formula. Both come
+  from the `mendeleev` element table.
 
 ---
 
-## PWA Customization
+## Commands
 
-To rebrand the starter for your project, replace the following values:
+| Command                          | Purpose                                                 |
+| :------------------------------- | :------------------------------------------------------ |
+| `python pipeline/build_atlas.py` | Build `public/data/atlas.json` (cached after first run) |
+| `pytest pipeline`                | Category rule tests                                     |
+| `npm start`                      | Angular dev server                                      |
+| `npm test`                       | Vitest unit tests                                       |
+| `npm run lint`                   | ESLint                                                  |
+| `npm run format:check`           | Prettier check                                          |
+| `npm run build:pages`            | Production build + GitHub Pages 404 fallback            |
+| `npm run e2e`                    | Playwright smoke tests (phone, tablet, desktop)         |
 
-1. **Application Identity & Document Title**:
-   - `src/index.html`: Update `<title>`, `<meta name="description">`, and `<meta name="theme-color">`.
-   - `src/app/app.ts`: Update the `title` signal.
-2. **Web App Manifest**:
-   - `public/manifest.webmanifest`: Update `name`, `short_name`, `description`, `theme_color`, and `background_color`.
-3. **App Icons**:
-   - `public/icons/`: Replace the PNG icons (sizes 72x72 through 512x512) and maskable icons.
-   - `public/favicon.ico`: Replace the browser favicon.
-4. **Offline Caching Rules**:
-   - `ngsw-config.json`: Adjust static asset groups or add dynamic data API caching groups (`dataGroups`) as needed.
-5. **Application Views**:
-   - Replace placeholder components in `src/app/home/` and `src/app/status/` with your application's domain UI and routes.
+## Deployment
 
----
+Pushing to `main` builds and deploys to GitHub Pages via `.github/workflows/deploy.yml`. Set
+**Settings → Pages → Source** to **GitHub Actions** once. The base href is resolved from the
+repository name automatically.
 
-## Documentation & Agent Guides
+## Data license
 
-Comprehensive documentation and instructions for developers and AI agents:
+Materials Project data is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The app shows attribution and the database version on every page. Code is [MIT](LICENSE).
 
-- **[AGENTS.md](AGENTS.md)**: Agent instructions, map of code, commands, quality gates, and guardrails.
-- **[GEMINI.md](GEMINI.md)**: Operational coding rules and the simplicity ladder.
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Detailed system architecture, technology stack, and derivation guidance.
-- **[docs/DECISIONS.md](docs/DECISIONS.md)**: Architectural Decision Records (ADRs).
-- **[docs/ROADMAP.md](docs/ROADMAP.md)**: Starter baseline, derivation onboarding checklist, and roadmap template.
-- **[docs/exec-plans/](docs/exec-plans/active/README.md)**: Structured execution plans (active and completed).
+## Further docs
 
----
-
-## Design Philosophy
-
-This starter embraces **YAGNI** (You Aren't Gonna Need It) and modern web standards:
-
-- **Zero unnecessary runtime dependencies**: Standalone Angular components with native browser APIs.
-- **Modern tooling**: Vitest for fast, headless unit tests; Playwright for cross-viewport validation; ESLint + Prettier for code consistency.
-- **Mobile-first baseline**: Built-in safe-area insets, touch targets (>= 44px), responsive typography, and reduced-motion support.
-- **Deliberate separation**: Common PWA and GitHub Pages deployment mechanics are completely solved, leaving architecture and product design entirely to the descendant project.
-
-## License
-
-[MIT](LICENSE)
+[AGENTS.md](AGENTS.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
+[docs/DECISIONS.md](docs/DECISIONS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)

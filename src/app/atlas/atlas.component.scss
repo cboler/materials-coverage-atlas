@@ -136,6 +136,18 @@
   font-size: var(--font-size-xs);
 }
 
+.filter-note {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+}
+
 .muted {
   color: var(--text-muted);
 }

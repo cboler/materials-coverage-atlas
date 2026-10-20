@@ -43,11 +43,11 @@ materials-coverage-atlas/
 │   └── prepare-pages.mjs    # Generates 404.html SPA fallback for GitHub Pages
 ├── src/                     # Application source code
 │   ├── app/
-│   │   ├── atlas/           # Atlas view: d3/canvas scatter, overlays, legend, coverage table
-│   │   ├── status/          # PWA diagnostic & base-href verification component
+│   │   ├── atlas/           # Atlas view: d3/canvas scatter, overlays, legend, coverage table,
+│   │   │                    # and parallel coordinates (parallel-*.ts) with brushing linked to the map
 │   │   ├── app.config.ts    # Application providers (router, service worker, global error listeners)
 │   │   ├── app.routes.ts    # Application route definitions
-│   │   ├── app.ts           # Root shell component with PWA update & install prompts
+│   │   ├── app.ts           # Root shell component (header, router outlet, footer)
 │   │   └── app.html / .scss # Shell layout and navigation styling
 │   ├── index.html           # HTML entrypoint, title, viewport, and meta tags
 │   ├── main.ts              # Angular bootstrap entrypoint

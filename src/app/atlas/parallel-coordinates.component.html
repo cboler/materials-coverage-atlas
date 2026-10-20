@@ -1,0 +1,31 @@
+<section class="pc" aria-labelledby="pc-title">
+  <div class="pc-head">
+    <h2 id="pc-title">Property profiles</h2>
+    <p class="pc-status" role="status">
+      {{ matchCount() | number }} of {{ visibleCount() | number }} materials match
+      @if (drawn() < matchCount()) {
+        <span class="muted">· drawing a random {{ drawn() | number }}</span>
+      }
+    </p>
+    @if (filtered()) {
+      <button type="button" class="link-button" id="pc-clear" (click)="clearFilters()">
+        Clear filters
+      </button>
+    }
+  </div>
+  <p class="note">
+    Each line is one material crossing every axis, colored by the active overlay. Drag along an axis
+    to filter; drag into a <em>no data</em> slot to find coverage gaps. Filters also apply to the
+    map above.
+  </p>
+  <div class="pc-scroll">
+    <div class="pc-plot" #plot>
+      <canvas #canvas aria-hidden="true"></canvas>
+      <svg
+        #svg
+        role="group"
+        aria-label="Parallel coordinate axes with draggable range filters"
+      ></svg>
+    </div>
+  </div>
+</section>

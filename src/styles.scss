@@ -144,10 +144,9 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Accessible touch targets for buttons and interactive nav elements */
+/* Accessible touch targets for buttons */
 button,
-.button,
-.nav-link {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;

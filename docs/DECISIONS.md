@@ -15,6 +15,7 @@ Each record outlines the context, rationale, consequences, and trade-offs of sig
 - [ADR-005: Built-in Angular Service Worker for Offline PWA Support](#adr-005-built-in-angular-service-worker-for-offline-pwa-support)
 - [ADR-006: Offline Python Pipeline with Committed Atlas JSON](#adr-006-offline-python-pipeline-with-committed-atlas-json)
 - [ADR-007: Canvas Points with d3 Zoom and an SVG Anchor Layer](#adr-007-canvas-points-with-d3-zoom-and-an-svg-anchor-layer)
+- [ADR-008: Parallel Coordinates with Missing/Unphysical Slots and Linked Brushing](#adr-008-parallel-coordinates-with-missingunphysical-slots-and-linked-brushing)
 
 ---
 
@@ -180,6 +181,31 @@ The scatter holds about 150k points. One SVG element per point is too slow to zo
 
 - **Positive**: Smooth interaction at full dataset size. d3 is imported by name, so only the modules used are bundled; the initial bundle stays within the 500 kB budget (about 340 kB raw).
 - **Trade-off**: Canvas marks are not in the accessibility tree. The coverage table and the anchor list provide the text alternative.
+
+---
+
+## ADR-008: Parallel Coordinates with Missing/Unphysical Slots and Linked Brushing
+
+### Status
+
+Accepted
+
+### Context
+
+The map shows similarity but not how properties co-vary, and the atlas's core question is coverage: about 92% of entries lack elastic data. MP's elastic fields also contain unphysical values (for example K = -4.7e11 GPa; about 7% of elastic entries fall outside 0-500 GPa bulk or 0-600 GPa shear), which would flatten any data-driven axis.
+
+### Decision
+
+- Parallel coordinates over category, origin, band gap, formation energy, hull energy (square-root axis), bulk/shear modulus, cost and abundance (log axes). Category axes jitter lines inside each level so they bundle into ribbons, as in parallel sets.
+- Every material gets a position t on every axis. Missing values go to a "no data" slot below the axis, and moduli outside physical bounds go to an "unphysical" slot above it, so one continuous `d3-brush` range per axis can select values, gaps, or both.
+- Numeric domains span the 0.1-99.9% quantiles (clamped); moduli use fixed physical bounds that match the structural rule.
+- Lines draw on canvas, capped at 12,000 selected plus 4,000 context lines, sampled in a fixed shuffled order. Counts are computed over all materials and the sampling is disclosed in the UI.
+- The brush mask flows to the map, which mutes non-matching points and enlarges matches.
+
+### Consequences
+
+- **Positive**: Coverage and data-quality gaps become something you can select and see on the map.
+- **Trade-off**: Sampling means rare profiles inside a very large match set may not show as lines until brushed narrower. Counts and the map are exact.
 
 ---
 

@@ -1,0 +1,111 @@
+:host {
+  display: block;
+  margin-top: var(--space-8);
+}
+
+.pc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+
+  h2 {
+    font-size: var(--font-size-lg);
+    margin: 0;
+  }
+}
+
+.pc-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.link-button {
+  background: none;
+  color: var(--color-primary);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.note {
+  font-size: var(--font-size-xs);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+// The plot keeps a readable minimum width and scrolls inside its own box on phones.
+.pc-scroll {
+  overflow-x: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.pc-plot {
+  position: relative;
+  min-width: 760px;
+  height: 420px;
+
+  canvas,
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// Axes are appended by d3, outside Angular's view encapsulation.
+:host ::ng-deep {
+  .pc-title {
+    fill: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
+  .pc-unit {
+    fill: var(--text-secondary);
+    font-weight: 400;
+    font-size: 11px;
+  }
+
+  .pc-line,
+  .pc-tick {
+    stroke: var(--text-secondary);
+  }
+
+  .pc-slot {
+    stroke: var(--text-muted);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .pc-tick-label,
+  .pc-level {
+    fill: var(--text-secondary);
+    font-size: 10px;
+    text-anchor: end;
+    paint-order: stroke;
+    stroke: var(--bg-surface);
+    stroke-width: 3px;
+  }
+
+  .pc-level {
+    fill: var(--text-primary);
+    font-size: 11px;
+    text-anchor: start;
+  }
+
+  .brush .selection {
+    fill: var(--color-primary);
+    fill-opacity: 0.18;
+    stroke: var(--color-primary);
+    stroke-width: 1.5;
+  }
+}

@@ -3,7 +3,6 @@ import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { AtlasComponent } from './atlas/atlas.component';
 import { FIXTURE } from './atlas/atlas-fixture';
-import { StatusComponent } from './status/status.component';
 import { routes } from './app.routes';
 
 function mockFetch(response: Response) {
@@ -14,7 +13,7 @@ describe('Application Tests', () => {
   beforeEach(async () => {
     mockFetch(new Response('not found', { status: 404 }));
     await TestBed.configureTestingModule({
-      imports: [App, AtlasComponent, StatusComponent],
+      imports: [App, AtlasComponent],
       providers: [provideRouter(routes)],
     }).compileComponents();
   });
@@ -31,12 +30,10 @@ describe('Application Tests', () => {
       );
     });
 
-    it('should render accessible navigation links and skip link', async () => {
+    it('should render the skip link', async () => {
       const fixture = TestBed.createComponent(App);
       await fixture.whenStable();
       const compiled = fixture.nativeElement as HTMLElement;
-      expect(compiled.querySelector('#nav-link-home')?.textContent?.trim()).toBe('Atlas');
-      expect(compiled.querySelector('#nav-link-status')?.textContent?.trim()).toBe('Status');
       expect(compiled.querySelector('.skip-link')?.getAttribute('href')).toBe('#main-content');
     });
   });
@@ -82,18 +79,6 @@ describe('Application Tests', () => {
       (compiled.querySelector('.anchor-list .link-button') as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(compiled.querySelector('#selected-detail')?.textContent).toContain('Al2O3');
-    });
-  });
-
-  describe('StatusComponent', () => {
-    it('should render base uri diagnostic', async () => {
-      const fixture = TestBed.createComponent(StatusComponent);
-      await fixture.whenStable();
-      const compiled = fixture.nativeElement as HTMLElement;
-      expect(compiled.querySelector('#status-heading')?.textContent).toContain(
-        'Runtime & Routing Verification',
-      );
-      expect(compiled.querySelector('#base-uri-val')).toBeTruthy();
     });
   });
 });

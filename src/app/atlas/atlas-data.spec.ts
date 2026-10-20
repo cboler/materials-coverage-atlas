@@ -58,5 +58,8 @@ describe('fmtNumber', () => {
     expect(fmtNumber(0.012345)).toBe('0.0123');
     expect(fmtNumber(12345)).toBe('12.3k');
     expect(fmtNumber(1e6)).toBe('1M');
+    expect(fmtNumber(1e12)).toBe('1e12');
+    expect(fmtNumber(2.9e13)).toBe('2.9e13');
+    expect(fmtNumber(5.5e-10)).toBe('5.5e-10');
   });
 });

@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { ParallelCoordinatesComponent } from './parallel-coordinates.component';
 import {
   quadtree,
   select,
@@ -21,7 +22,6 @@ import {
 } from 'd3';
 import {
   Atlas,
-  Group,
   OVERLAYS,
   OverlayId,
   buildGroups,
@@ -35,6 +35,7 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 const DATA_URL = 'data/atlas.json'; // relative: resolves against <base href> on GitHub Pages
 const PADDING = 24;
+const FILTERED_OUT = '#2b3343';
 const HOVER_RADIUS = 10; // screen px; larger than the marks so small points are easy to hit
 const RULE_ORDER = [
   'gate',
@@ -49,7 +50,7 @@ const RULE_ORDER = [
 @Component({
   selector: 'app-atlas',
   standalone: true,
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, ParallelCoordinatesComponent],
   templateUrl: './atlas.component.html',
   styleUrl: './atlas.component.scss',
 })
@@ -66,6 +67,12 @@ export class AtlasComponent implements OnDestroy {
   protected readonly hidden = signal<ReadonlySet<string>>(new Set());
   protected readonly hovered = signal<number | null>(null);
   protected readonly selected = signal<number | null>(null);
+  /** Materials matching the parallel-coordinates brushes (1 = match), or null when unfiltered. */
+  protected readonly filterMask = signal<Uint8Array | null>(null);
+  protected readonly filteredCount = computed(() => {
+    const mask = this.filterMask();
+    return mask ? mask.reduce((n, v) => n + v, 0) : null;
+  });
   protected readonly tooltipAt = signal({ x: 0, y: 0, flip: false });
 
   protected readonly groups = computed(() => {
@@ -116,6 +123,7 @@ export class AtlasComponent implements OnDestroy {
     effect(() => {
       this.hovered();
       this.selected();
+      this.filterMask();
       untracked(() => this.scheduleDraw());
     });
   }
@@ -270,9 +278,18 @@ export class AtlasComponent implements OnDestroy {
     // Largest groups first so small groups sit on top instead of being buried.
     const order = [...this.groups()].sort((a, b) => b.indices.length - a.indices.length);
 
+    const mask = this.filterMask();
+    const visible = order.filter((g) => !hidden.has(g.key));
+    if (mask) {
+      // Points outside the brushed profile recede to a neutral so the matching set stands out.
+      ctx.globalAlpha = 0.35;
+      for (const g of visible) this.drawGroup(ctx, g.indices, FILTERED_OUT, t, r, (i) => !mask[i]);
+    }
     ctx.globalAlpha = 0.8;
-    for (const g of order) {
-      if (!hidden.has(g.key)) this.drawGroup(ctx, g, t, r, width, height);
+    // Brushed matches are often sparse, so they draw a size up to stay findable.
+    const matchR = mask ? r + 1 : r;
+    for (const g of visible) {
+      this.drawGroup(ctx, g.indices, g.color, t, matchR, mask ? (i) => mask[i] === 1 : undefined);
     }
     ctx.globalAlpha = 1;
 
@@ -289,16 +306,18 @@ export class AtlasComponent implements OnDestroy {
 
   private drawGroup(
     ctx: CanvasRenderingContext2D,
-    g: Group,
+    indices: number[],
+    color: string,
     t: ZoomTransform,
     r: number,
-    width: number,
-    height: number,
+    include?: (i: number) => boolean,
   ): void {
-    ctx.fillStyle = g.color;
+    const { width, height } = this.size;
+    ctx.fillStyle = color;
     const useRects = r < 1.6; // at small sizes squares are indistinguishable and much cheaper
     if (!useRects) ctx.beginPath();
-    for (const i of g.indices) {
+    for (const i of indices) {
+      if (include && !include(i)) continue;
       const x = t.x + t.k * this.wx[i];
       const y = t.y + t.k * this.wy[i];
       if (x < -r || y < -r || x > width + r || y > height + r) continue;

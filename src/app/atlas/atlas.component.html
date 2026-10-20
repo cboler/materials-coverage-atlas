@@ -83,6 +83,11 @@
       @if (state() === 'ready') {
         <button type="button" class="reset" (click)="resetZoom()">Reset view</button>
       }
+      @if (filteredCount() !== null) {
+        <a class="filter-note" href="#pc-title">
+          {{ filteredCount() | number }} match the property-profile filters ↓
+        </a>
+      }
     </div>
 
     <aside class="side" aria-label="Legend and details">
@@ -171,6 +176,15 @@
       }
     </aside>
   </div>
+
+  @if (atlas(); as a) {
+    <app-parallel-coordinates
+      [atlas]="a"
+      [groups]="groups()"
+      [hidden]="hidden()"
+      (filterChange)="filterMask.set($event)"
+    />
+  }
 
   @if (coverage().length) {
     <section class="panel" aria-labelledby="coverage-title">

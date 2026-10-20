@@ -11,6 +11,10 @@ coverage is thin.
   coverage (which entries lack bulk/shear moduli).
 - **Anchors**: calcite, gypsum, portlandite, alite, belite, quartz, corundum, iron and aluminum
   are pinned and labeled as reference points.
+- **Property profiles**: a parallel coordinates view with brushing. Every material is a line across
+  category, origin, band gap, formation energy, hull energy, moduli, cost and abundance. Dragging a
+  range on any axis filters both the lines and the map, and "no data" / "unphysical" slots on
+  each axis make coverage and data-quality gaps visible.
 - **Coverage table**: per category, the share of entries that are experimentally observed, have
   elastic data, or have cost data.
 
@@ -77,6 +81,11 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   categories on one scatter, no palette keeps every pair distinct under color-vision deficiency,
   so isolating groups from the legend is the reliable way to compare them.
 - **Construction anchors** in the side panel select the pinned reference materials.
+- **Property profiles**: drag along any axis to keep only lines in that range; brushes on several
+  axes combine (AND). Drag into an axis's _no data_ slot to find entries missing that property, or
+  its _unphysical_ slot to find broken elastic fits. Click an axis outside its brush, or use
+  **Clear filters**, to reset. The map mutes everything that doesn't match. With more than 12,000
+  matches, a stable random sample of lines is drawn (the header says so); counts are always exact.
 
 ### Caveats
 

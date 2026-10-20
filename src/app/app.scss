@@ -21,9 +21,6 @@
   margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
 }
 
 .brand-link {
@@ -47,88 +44,6 @@
   font-size: var(--font-size-base);
   color: var(--text-primary);
   letter-spacing: -0.01em;
-}
-
-.app-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.nav-link {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
-
-  &:hover {
-    color: var(--text-primary);
-    background-color: var(--bg-surface-elevated);
-    text-decoration: none;
-  }
-
-  &.active {
-    color: var(--color-primary);
-    background-color: rgba(56, 189, 248, 0.1);
-    font-weight: 600;
-  }
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.install-btn {
-  background-color: var(--color-primary);
-  color: var(--text-inverse);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-3);
-  min-height: 36px;
-  border-radius: var(--radius-full);
-  border: none;
-  cursor: pointer;
-
-  &:hover {
-    background-color: var(--color-primary-hover);
-  }
-}
-
-.network-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-mono);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-  }
-
-  &.online {
-    color: var(--color-success);
-    .dot {
-      background-color: var(--color-success);
-      box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
-    }
-  }
-
-  &.offline {
-    color: var(--color-error);
-    .dot {
-      background-color: var(--color-error);
-      box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
-    }
-  }
 }
 
 .app-content {
@@ -180,9 +95,5 @@
     &:hover {
       color: var(--color-primary);
     }
-  }
-
-  .separator {
-    color: var(--text-muted);
   }
 }

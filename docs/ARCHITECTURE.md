@@ -59,10 +59,9 @@ angular-pwa-starter/
 ├── src/
 │   ├── app/                  # Application code
 │   │   ├── home/             # Template placeholder views (to be replaced in derivations)
-│   │   ├── status/           # PWA runtime inspection & environment diagnostic
 │   │   ├── app.config.ts     # Global application providers
 │   │   ├── app.routes.ts     # Route table and lazy loading configurations
-│   │   ├── app.ts            # Root application coordinator and PWA install prompts
+│   │   ├── app.ts            # Root shell component (header, router outlet, footer)
 │   │   └── app.html / .scss  # Root shell presentation and banner layout
 │   ├── index.html            # HTML document entrypoint
 │   ├── main.ts               # Application bootstrap

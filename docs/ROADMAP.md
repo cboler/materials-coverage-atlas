@@ -1,6 +1,6 @@
 # Project Roadmap
 
-This document outlines the milestones for the **Angular PWA Starter** baseline and provides a structured roadmap template for downstream projects.
+This document records the **Angular PWA Starter** baseline this project was derived from, and the **Materials Coverage Atlas** roadmap.
 
 ---
 
@@ -36,7 +36,7 @@ When creating a new project from this template, complete the following customiza
 ### 3. Replace Placeholder Views
 
 - [x] Replace `src/app/home/` with your application's domain UI and primary views.
-- [x] Retain or adapt `src/app/status/` as an internal diagnostic and environment verification screen.
+- [x] Removed `src/app/status/`, the nav, the install button and the network badge; the atlas is the only view (browsers offer install from the address bar).
 - [x] Update route definitions in `src/app/app.routes.ts`.
 
 ### 4. Implement Domain State & Persistence
@@ -56,40 +56,53 @@ When creating a new project from this template, complete the following customiza
 
 ---
 
-## Part 3: Downstream Project Roadmap Template
+## Part 3: Materials Coverage Atlas Roadmap
 
-> **For Derivations**: Replace this section with your application's phased delivery milestones.
+### Phase 1: Atlas MVP (shipped)
 
-### Phase 1: MVP & Core User Flow
+- [x] **Data pipeline**: mp-api pull with local cache, documented category rules, supply metrics, cached UMAP, construction anchors (`pipeline/`).
+- [x] **Map**: canvas scatter with zoom, hover/tap details, five overlays, toggleable legend, labeled anchors, coverage table, rules panel.
+- [x] **Property profiles**: parallel coordinates with brushing linked to the map, plus "no data" and "unphysical" slots (ADR-008).
+- [x] **Data refresh workflow**: `Build Atlas Data` GitHub Action using the `MP_API_KEY` secret.
 
-- [ ] **Milestone 1.1: Core Domain Entities & State**: Define models, core state signals, and validation rules.
-- [ ] **Milestone 1.2: Primary Interactive View**: Implement the primary user interface and essential interaction controls.
-- [ ] **Milestone 1.3: User Flow Smoke Test**: Add Playwright assertions validating the happy-path user journey across viewports.
+### Phase 2: Category rules revision (in progress, local)
 
-### Phase 2: Offline Persistence & Interactivity
+Findings from the shipped data (MP v2026.09.28, 154,377 materials):
 
-- [ ] **Milestone 2.1: Local Storage / IndexedDB Sync**: Persist user data locally so changes survive browser reloads.
-- [ ] **Milestone 2.2: Offline Indicator & Error Handling**: Provide feedback to users when actions require network connectivity.
-- [ ] **Milestone 2.3: Undo/Redo or State Reset**: Provide safe recovery options for destructive user operations.
+- About 7,500 stable insulators with band gaps above 4 eV and no elastic data are unclassified. They include gypsum (5.7 eV) and belite (4.45 eV). Construction-relevant oxides, silicates, carbonates and sulfates have no category.
+- 77% of compounds containing Fe/Co/Ni/Mn/Cr/V are FM/FiM and only 5.4% AFM, because MP calculations are initialized ferromagnetic. The magnetic category is inflated.
 
-### Phase 3: Platform Capabilities & Polish
+- [ ] Add a category for stable wide-gap insulators (pattern 3).
+- [ ] Tighten the magnetic rule (pattern 4).
+- [ ] Regenerate `atlas.json` and review category counts and anchor assignments.
 
-- [ ] **Milestone 3.1: Native Web Platform APIs**: Integrate relevant platform APIs (Web Share, Web Audio, Clipboard, Notifications, etc.).
-- [ ] **Milestone 3.2: Keyboard Shortcuts & Controller Support**: Add keyboard shortcuts and accessibility affordances for power users.
-- [ ] **Milestone 3.3: Animation & Micro-interactions**: Add CSS transitions adhering to `prefers-reduced-motion`.
+### Phase 3: Orientation and discovery (documented, not yet scheduled)
 
-### Phase 4: Production Hardening & Auditing
+Proposed after a review of recent visualization work. Not implemented; each needs a design pass before work starts.
 
-- [ ] **Milestone 4.1: Lighthouse PWA & A11y Audit**: Ensure 95+ scores on Performance, Accessibility, and Best Practices.
-- [ ] **Milestone 4.2: Bundle Budget Verification**: Verify production bundles stay within configured budgets in `angular.json`.
-- [ ] **Milestone 4.3: Real Device Verification**: Verify touch responsiveness and safe area insets on physical mobile devices.
+- [ ] **Cluster labels**: name the UMAP islands so the map is readable without hovering.
+  - _Pipeline_: density-based clustering on the 2D coordinates (e.g. HDBSCAN), then a label per cluster from its dominant chemistry: most common element set or anion class ("Li–TM oxides", "Ca silicates", "intermetallics"). Ship as `clusters: [{label, x, y, size}]` plus a per-material cluster id.
+  - _UI_: labels at cluster centroids, collision-avoided like the anchor labels, shown or hidden by zoom level.
+  - _Prior art_: Apple's Embedding Atlas (automatic clustering and labeling; arXiv 2505.06386).
+- [ ] **Density contours**: show where materials concentrate and keep small groups from being buried by overdraw.
+  - _UI_: `d3-contour` (already in the d3 bundle) over world coordinates, as an outline layer in the SVG overlay. Either one contour set for all points, or per category when a legend group is isolated. Recompute on resize, not on zoom (contours are transformed with the view).
+  - _Option_: a majority-category-per-pixel mode for dense regions, after PixelatedScatter (TVCG 2025).
+  - _Prior art_: Embedding Atlas (KDE density contours, order-independent transparency).
+- [ ] **Find similar**: "the 25 materials closest to portlandite, ranked by whether they have elastic data", to support substitution and gap-filling around the construction anchors.
+  - _Similarity must use the feature space, not 2D map distance_, because UMAP distorts distances between clusters.
+  - _Options_: (a) precompute top-k neighbors in the pipeline (k=25 is about 3.9M ints, roughly 15–20 MB of JSON, too large to load by default); (b) precompute neighbors only for anchors and a curated list (small); (c) ship a compact quantized feature matrix and compute kNN in a Web Worker on demand. Start with (b) and revisit (c) if users want it for arbitrary materials.
+  - _UI_: a "Similar materials" list in the detail card, highlighted on the map and in the property profiles.
+  - _Prior art_: OptiMate (arXiv 2501.05903) uses UMAP maps to find substitute materials; Embedding Atlas offers nearest-neighbor search.
+
+Considered and deferred: Mosaic/DuckDB-WASM linked views (built for millions to billions of rows; 154k fits in memory), a WebGPU renderer (the canvas draws in about 6 ms median and 30 ms p95), and natural-language queries (brushes already express those filters).
 
 ---
 
 ## Part 4: Technical Debt & Maintenance Backlog
 
-Use this section to track known simplifications, performance ceilings, or refactoring opportunities:
-
-| Item ID | Description                    | Severity | Ceiling / Known Constraint                             | Target Phase |
-| :------ | :----------------------------- | :------- | :----------------------------------------------------- | :----------- |
-| _TD-01_ | _Example: In-memory list scan_ | _Low_    | _Degrades above 500 items; migrate to IndexedDB index_ | _Phase 2_    |
+| Item ID | Description                                                                 | Severity | Ceiling / Known Constraint                                                                   | Target Phase |
+| :------ | :-------------------------------------------------------------------------- | :------- | :------------------------------------------------------------------------------------------- | :----------- |
+| TD-01   | mp-api bulk-download path fails on Windows (URL-encodes the path separator) | Low      | `fetch.py` forces the paginated REST path via `num_chunks`; revisit when mp-api fixes it     | —            |
+| TD-02   | `mendeleev` declares `<3.15`                                                | Low      | Installed with `--ignore-requires-python` on 3.15; drop the workaround when upstream updates | —            |
+| TD-03   | Detail card shows raw unphysical moduli (e.g. -4.7e11 GPa)                  | Low      | Flag values outside physical bounds in the card, as the property profiles do                 | Phase 2      |
+| TD-04   | Property-profile lines are sampled above 12,000 matches                     | Low      | Counts and map are exact; raise the cap or move lines to WebGL if sampling hides patterns    | Phase 3      |

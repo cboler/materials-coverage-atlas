@@ -35,6 +35,8 @@ test.describe('Responsive Shell Smoke Tests', () => {
     await expect(missing.or(legend)).toBeVisible();
     if (await legend.isVisible()) {
       await expect(page.locator('#coverage-title')).toBeVisible();
+      await expect(page.locator('#pc-title')).toBeVisible();
+      await expect(page.locator('app-parallel-coordinates g.pc-axis')).toHaveCount(9);
 
       // 4. Overlay switching updates the legend
       await page.locator('#overlay-elastic').click();
@@ -47,11 +49,8 @@ test.describe('Responsive Shell Smoke Tests', () => {
     });
     expect(hasHorizontalOverflow).toBeFalsy();
 
-    // 6. Client-side navigation to the status screen and back
-    await page.locator('#nav-link-status').click();
-    await expect(page).toHaveURL(/.*status/);
-    await expect(page.locator('#status-heading')).toBeVisible();
-    await page.locator('#back-home-link').click();
+    // 6. Unknown deep links fall back to the atlas (SPA routing)
+    await page.goto('/no-such-page');
     await expect(page.locator('#atlas-title')).toBeVisible();
 
     // 7. Zero unhandled console errors or exceptions

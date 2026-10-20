@@ -260,9 +260,12 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
   };
 }
 
-/** Compact number: 3 significant figures, SI-style suffixes for large values. */
+/** Compact number: 3 significant figures, k/M suffixes, exponent form outside 1e-3..1e9. */
 export function fmtNumber(v: number): string {
   const abs = Math.abs(v);
+  if (abs >= 1e9 || (abs > 0 && abs < 1e-3)) {
+    return Number(v.toPrecision(3)).toExponential().replace('+', '');
+  }
   if (abs >= 1e6) return `${+(v / 1e6).toPrecision(3)}M`;
   if (abs >= 1e3) return `${+(v / 1e3).toPrecision(3)}k`;
   return `${+v.toPrecision(3)}`;

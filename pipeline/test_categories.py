@@ -16,6 +16,8 @@ def material(**overrides):
         "g_vrh": NAN,
         "ordering": "NM",
         "magnetization": 0.0,
+        "min_abundance": 1000.0,
+        "working_ion_fraction": 0.0,
     }
     return {**base, **overrides}
 
@@ -29,9 +31,9 @@ def test_each_rule_in_isolation():
     primary, _ = classify(
         material(k_vrh=200, g_vrh=150),  # stiff, no gap
         material(elements=["Fe"], ordering="FM", magnetization=2.2),
-        material(elements=["Co", "Li", "O"], band_gap=2.5),  # battery cathode chemistry
+        material(elements=["Co", "Li", "O"], band_gap=2.5, working_ion_fraction=0.25),  # cathode
         material(band_gap=1.4),  # PV window
-        material(band_gap=3.0),  # semiconductor window
+        material(band_gap=2.5),  # semiconductor window
         material(),  # metal, no data
     )
     assert primary == [
@@ -65,6 +67,50 @@ def test_rejects_weak_or_unphysical_elastic_data_and_antiferromagnets():
         material(k_vrh=-5, g_vrh=60),
         material(k_vrh=200, g_vrh=900),
         material(elements=["Mn", "O"], ordering="AFM", magnetization=0.0),
-        material(elements=["Li", "Co", "O"], band_gap=0.0),  # metallic: not an electrode candidate
+        material(elements=["Li", "Co", "O"], working_ion_fraction=0.02),  # Li only a trace
     )
     assert primary == ["unclassified"] * 5
+
+
+def test_inferred_structural_for_stable_abundant_oxide_insulators():
+    primary, flags = classify(material(band_gap=5.0))  # e.g. a silicate or carbonate
+    assert primary == ["structural"]
+    assert flags.iloc[0]["structural_inferred"]
+
+    verified, vflags = classify(material(band_gap=5.0, k_vrh=200, g_vrh=150))
+    assert verified == ["structural"]
+    assert not vflags.iloc[0]["structural_inferred"]
+
+
+def test_inferred_structural_requires_no_elastic_data_oxygen_abundance_and_stability():
+    primary, _ = classify(
+        material(band_gap=5.0, k_vrh=36, g_vrh=21),  # measured and soft (portlandite-like)
+        material(band_gap=5.0, min_abundance=1.0),  # scarce element
+        material(band_gap=5.0, min_abundance=math.nan),  # abundance unknown
+        material(band_gap=5.0, elements=["Ca", "F"]),  # no oxygen
+        material(band_gap=5.0, e_above_hull=0.08),  # passes the gate but not the 0.05 cut
+    )
+    assert primary == ["unclassified"] * 5
+
+
+def test_magnetic_excludes_insulating_ferromagnets_but_keeps_ferrimagnets():
+    primary, flags = classify(
+        material(elements=["Mn", "O"], ordering="FM", magnetization=5.0, band_gap=2.5),
+        material(elements=["Fe", "O"], ordering="FiM", magnetization=4.0, band_gap=1.0),
+        material(elements=["Fe", "O"], ordering="FM", magnetization=14.0, band_gap=0.0),
+    )
+    # Insulating FM is an MP artifact: falls through to its band-gap category instead.
+    assert primary == ["electronic_optical", "magnetic", "magnetic"]
+    assert not flags.iloc[0]["magnetic"]
+
+
+def test_battery_rule_accepts_metallic_electrodes_and_rejects_minerals_and_alloys():
+    li = {"working_ion_fraction": 0.25}
+    primary, _ = classify(
+        material(elements=["Li", "Ni", "O"], **li),  # LiNiO2: metallic in GGA, still an electrode
+        material(elements=["Li", "Ti", "S"], **li),  # LiTiS2: sulfide framework
+        material(elements=["Ca", "Fe", "Na", "O", "Si"], band_gap=2.5, **li),  # Ca spectator
+        material(elements=["Fe", "Li"], **li),  # alloy: no anion framework
+        material(elements=["Li", "Mn", "O"], e_above_hull=0.08, **li),  # outside the 0.05 cut
+    )
+    assert primary == ["energy", "energy", "electronic_optical", "unclassified", "unclassified"]

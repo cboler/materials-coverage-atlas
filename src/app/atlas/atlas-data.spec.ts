@@ -51,6 +51,13 @@ describe('materialDetail', () => {
     expect(iron.url).toBe('https://next-gen.materialsproject.org/materials/mp-13');
     expect(materialDetail(FIXTURE, 0).anchor).toBe('Corundum');
   });
+
+  it('marks structural entries whose basis is composition, not elastic data', () => {
+    const atlas = structuredClone(FIXTURE);
+    expect(materialDetail(atlas, 0).category).toBe('Structural');
+    atlas.columns.structural_inferred = [1, 0, 0, 0];
+    expect(materialDetail(atlas, 0).category).toBe('Structural (inferred, no elastic data)');
+  });
 });
 
 describe('fmtNumber', () => {

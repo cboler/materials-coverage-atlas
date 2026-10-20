@@ -72,9 +72,10 @@ Findings from the shipped data (MP v2026.09.28, 154,377 materials):
 - About 7,500 stable insulators with band gaps above 4 eV and no elastic data are unclassified. They include gypsum (5.7 eV) and belite (4.45 eV). Construction-relevant oxides, silicates, carbonates and sulfates have no category.
 - 77% of compounds containing Fe/Co/Ni/Mn/Cr/V are FM/FiM and only 5.4% AFM, because MP calculations are initialized ferromagnetic. The magnetic category is inflated.
 
-- [ ] Add a category for stable wide-gap insulators (pattern 3).
-- [ ] Tighten the magnetic rule (pattern 4).
-- [ ] Regenerate `atlas.json` and review category counts and anchor assignments.
+- [x] Inferred-structural rule for stable, wide-gap, oxygen-bearing, earth-abundant compounds without elastic data (pattern 3). Gypsum, alite and belite become structural (inferred).
+- [x] Magnetic rule counts only metallic FM/FiM and insulating ferrimagnets (pattern 4). The magnetic category goes from 32,613 to 14,833.
+- [x] Narrow the battery-electrode rule. Once magnetic stopped outranking it, the old rule (any Li/Na/K/Mg/Zn + redox metal + gap > 0) put energy at 22,701, and it missed metallic electrodes such as LiNiO2 and LiTiS2. The new rule requires the working ion to be ≥ 5% of atoms, an O/F/S/P/Se/N framework, no Rb/Cs/Ca/Sr/Ba, and a hull distance ≤ 0.05 eV/atom, with any band gap. Battery matches go from 16,814 to 9,735, and it keeps all 19 reference electrodes checked (the old rule kept 15).
+- [ ] Regenerate `atlas.json` and review category counts and anchor assignments. Expected from a dry run on the cache: structural 10,494 (4,357 inferred), energy 16,871, electronic/optical 27,693, magnetic 14,833, unclassified 84,486.
 
 ### Phase 3: Orientation and discovery (documented, not yet scheduled)
 

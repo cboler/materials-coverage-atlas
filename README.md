@@ -93,9 +93,16 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   gaps are GGA/GGA+U and typically underestimate experiment.
 - Magnetic ordering comes from MP calculations that are initialized ferromagnetic, so many
   transition-metal compounds report FM even where experiment finds antiferromagnetism. The
-  magnetic category is correspondingly generous (about a fifth of the database).
-- Elastic moduli exist for only a small fraction of entries, so "structural" can only be assigned
-  where that data exists. The elastic-coverage overlay shows the gap.
+  magnetic rule therefore only counts metallic FM/FiM entries and insulating ferrimagnets;
+  insulating "FM" results are treated as artifacts.
+- Elastic moduli exist for only a small fraction of entries. "Structural" is verified where
+  moduli exist, and inferred from composition otherwise (stable, wide-gap, oxygen-bearing,
+  earth-abundant). The detail card says which basis applies, and the elastic-coverage overlay
+  shows the gap.
+- The battery-electrode rule does not require a band gap, because several real electrodes
+  (LiNiO₂, LiTiS₂) are metallic in GGA. It requires an anion framework, a meaningful working-ion
+  fraction, and no spectator cations instead. It was checked against 19 known electrodes, but
+  there is no labeled set of non-electrodes, so false positives are not measured.
 - Element cost is the mass-weighted raw element price. It ignores processing, so treat it as a
   floor. Abundance is the crustal abundance of the scarcest element in the formula. Both come
   from the `mendeleev` element table.

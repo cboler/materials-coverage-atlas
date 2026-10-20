@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
 
-from categories import CATEGORIES, RULES, assign_categories
+from categories import CATEGORIES, RULES, WORKING_IONS, assign_categories
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix
 from fetch import load_summary
 from supply import supply_metrics
@@ -106,13 +106,21 @@ def build(refresh: bool, sample: int | None) -> None:
     print("Parsing compositions...")
     compositions = [Composition(f) for f in df["formula"]]
 
+    # Supply metrics come first: the inferred-structural rule needs the scarcest element's abundance.
+    print("Computing supply metrics...")
+    cost, abundance, scarcest = zip(*(supply_metrics(c) for c in compositions))
+    df["min_abundance"] = pd.to_numeric(pd.Series(abundance, index=df.index), errors="coerce")
+    df["working_ion_fraction"] = [
+        sum(c.get_atomic_fraction(el) for el in c.elements if el.symbol in WORKING_IONS)
+        for c in compositions
+    ]
+
     print("Applying category rules...")
     primary, flags = assign_categories(df)
     for category in CATEGORIES:
         print(f"  {category}: {(primary == category).sum()} primary")
-
-    print("Computing supply metrics...")
-    cost, abundance, scarcest = zip(*(supply_metrics(c) for c in compositions))
+    inferred = flags["structural_inferred"] & (primary == "structural")
+    print(f"  (structural by composition, no elastic data: {inferred.sum()})")
 
     print("Building features...")
     coords = embed(feature_matrix(df, compositions))
@@ -144,6 +152,8 @@ def build(refresh: bool, sample: int | None) -> None:
             "y": quantized[:, 1].tolist(),
             "category": primary.map(CATEGORIES.index).tolist(),
             "labels": label_bits.tolist(),
+            # 1 = structural candidacy rests on composition (no elastic data), not measured moduli.
+            "structural_inferred": flags["structural_inferred"].astype(int).tolist(),
             "theoretical": df["theoretical"].fillna(True).astype(int).tolist(),
             "band_gap": _round(df["band_gap"], 2),
             "formation_energy": _round(df["formation_energy"], 3),

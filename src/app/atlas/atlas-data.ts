@@ -23,6 +23,8 @@ export interface AtlasColumns {
   category: number[];
   /** Bitmask: bit i set = candidate for meta.categories[i]. */
   labels: number[];
+  /** 1 = structural by composition rule (no elastic data). Absent in atlas files built before it existed. */
+  structural_inferred?: number[];
   theoretical: number[];
   band_gap: Maybe<number>[];
   formation_energy: Maybe<number>[];
@@ -241,7 +243,10 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
     id: c.id[i],
     formula: c.formula[i],
     url: `https://next-gen.materialsproject.org/materials/${c.id[i]}`,
-    category: categoryLabel(primary),
+    category:
+      primary === 'structural' && c.structural_inferred?.[i]
+        ? 'Structural (inferred, no elastic data)'
+        : categoryLabel(primary),
     color: CATEGORY_STYLE[primary]?.color ?? NO_DATA_COLOR,
     otherCategories: categories
       .filter((key, bit) => key !== primary && c.labels[i] & (1 << bit))

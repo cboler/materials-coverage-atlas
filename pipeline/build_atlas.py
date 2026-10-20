@@ -28,9 +28,10 @@ from supply import supply_metrics
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "public" / "data" / "atlas.json"
 COORD_SCALE = 10000
-# Raw neighbors stored per anchor. Polymorphs crowd the top (calcite has 8+ CaCO3 entries), and
-# the UI groups them by formula, so this is generous to leave ~20 distinct formulas.
+# Neighbors stored per anchor, at most SIMILAR_PER_FORMULA per formula so polymorphs can't crowd
+# out other compounds (quartz's 60 nearest were all SiO2). 60 / 3 guarantees the UI's 20 formulas.
 SIMILAR_K = 60
+SIMILAR_PER_FORMULA = 3
 ORDERINGS = ["NM", "FM", "FiM", "AFM", "Unknown"]
 
 # Construction-material anchors. Each is resolved to an MP entry by reduced formula, preferring
@@ -128,6 +129,8 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
 
     print("Building features...")
     features = feature_matrix(df, compositions)
+    formulas = df["formula"].to_numpy()
+    has_elastic = df["k_vrh"].notna().to_numpy()
     coords = embed(features)
     lo, hi = coords.min(axis=0), coords.max(axis=0)
     quantized = np.rint((coords - lo) / (hi - lo).max() * COORD_SCALE).astype(int)
@@ -174,7 +177,14 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             {
                 **a,
                 "index": index_of[a["material_id"]],
-                "similar": nearest_neighbors(features, index_of[a["material_id"]], SIMILAR_K),
+                "similar": nearest_neighbors(
+                    features,
+                    index_of[a["material_id"]],
+                    SIMILAR_K,
+                    labels=formulas,
+                    per_label=SIMILAR_PER_FORMULA,
+                    prefer=has_elastic,
+                ),
             }
             for a in anchors
             if a["material_id"] in index_of

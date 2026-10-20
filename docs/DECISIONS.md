@@ -223,7 +223,7 @@ The map's islands were unlabeled, dense regions buried small groups, and there w
 ### Decision
 
 - **Region labels and contours are computed in the browser.** Regions come from connected components on a coarse grid over the quantized coordinates. Islands above 6% of the database are re-split at double the density threshold until they break apart, because one plain grid pass left a 105k-material "continent". Names combine the dominant chemical family (silicates, phosphates, metal–organics, halides, intermetallics, …) with up to two elements that are at least 1.5× over-represented and present in at least 25% of the island. Contours use `d3.contourDensity` at fixed fractions of peak density.
-- **Neighbors are computed in the pipeline, for anchors only.** Brute-force Euclidean distance in the same standardized, block-weighted feature space as UMAP; 60 per anchor, grouped by formula in the UI.
+- **Neighbors are computed in the pipeline, for anchors only.** Brute-force Euclidean distance in the same standardized, block-weighted feature space as UMAP; 60 per anchor, at most 3 per formula (plus the nearest entry with stiffness data when the cap would hide it), grouped by formula in the UI.
 
 ### Consequences
 

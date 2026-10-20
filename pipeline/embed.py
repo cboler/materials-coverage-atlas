@@ -94,18 +94,56 @@ def feature_matrix(df: pd.DataFrame, compositions: list[Composition]) -> np.ndar
     ).astype(np.float32)
 
 
-def nearest_neighbors(features: np.ndarray, index: int, k: int) -> list[int]:
+def nearest_neighbors(
+    features: np.ndarray,
+    index: int,
+    k: int,
+    labels: np.ndarray | None = None,
+    per_label: int | None = None,
+    prefer: np.ndarray | None = None,
+) -> list[int]:
     """Indices of the k materials closest to `index` in feature space, nearest first.
 
     Uses the same standardized, block-weighted features as UMAP, but true Euclidean distance:
     UMAP preserves neighborhoods, not distances, so 2D map proximity can mislead between clusters.
     Brute force is fine for a handful of query materials (one pass over ~150k x ~100 floats each).
+
+    With ``labels`` and ``per_label``, at most ``per_label`` neighbors share a label. Passing
+    formulas keeps polymorphs from filling the list: MP has dozens of SiO2 entries, so quartz's
+    60 plain nearest neighbors were all SiO2.
+
+    ``prefer`` (boolean per material) keeps the cap from hiding data: for every label picked, if
+    none of its kept entries is preferred, its nearest preferred entry is added too. With
+    "has elastic data", a formula is never shown as lacking stiffness data just because its
+    measured polymorph was the 4th nearest (calcite: 3 of 11 CaCO3 entries have moduli).
     """
     distances = np.linalg.norm(features - features[index], axis=1)
     distances[index] = np.inf
     k = min(k, len(features) - 1)
-    nearest = np.argpartition(distances, k)[:k]
-    return nearest[np.argsort(distances[nearest])].tolist()
+    if labels is None or per_label is None:
+        nearest = np.argpartition(distances, k)[:k]
+        return nearest[np.argsort(distances[nearest])].tolist()
+
+    picked: list[int] = []
+    taken: dict = {}
+    for i in np.argsort(distances):
+        if len(picked) == k or not np.isfinite(distances[i]):
+            break
+        label = labels[i]
+        if taken.get(label, 0) < per_label:
+            taken[label] = taken.get(label, 0) + 1
+            picked.append(int(i))
+
+    if prefer is not None:
+        covered = {labels[i] for i in picked if prefer[i]}
+        for label in dict.fromkeys(labels[i] for i in picked):  # picked labels, in order
+            if label in covered:
+                continue
+            candidates = np.flatnonzero((labels == label) & prefer & np.isfinite(distances))
+            if candidates.size:
+                picked.append(int(candidates[np.argmin(distances[candidates])]))
+        picked.sort(key=lambda i: distances[i])
+    return picked
 
 
 def embed(features: np.ndarray) -> np.ndarray:

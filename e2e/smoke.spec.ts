@@ -42,7 +42,7 @@ test.describe('Responsive Shell Smoke Tests', () => {
 
       // 4. Overlay switching updates the legend
       await page.locator('#overlay-elastic').click();
-      await expect(page.locator('.legend-label').first()).toHaveText('Has elastic data');
+      await expect(page.locator('.legend-label').first()).toHaveText('Stiffness computed');
     }
 
     // 5. Prevent accidental horizontal overflow

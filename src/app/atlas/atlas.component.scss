@@ -217,9 +217,10 @@
 .legend-item {
   width: 100%;
   justify-content: flex-start;
+  align-items: flex-start;
   background: none;
   color: var(--text-primary);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2);
   font-size: var(--font-size-sm);
 
   &:hover {
@@ -231,9 +232,18 @@
   }
 }
 
-.legend-label {
+.legend-text {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   text-align: left;
+}
+
+.legend-help {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .legend-count {
@@ -259,6 +269,54 @@
 .note {
   font-size: var(--font-size-xs);
   margin-top: var(--space-2);
+}
+
+.hint {
+  color: var(--color-primary);
+  margin-top: 2px;
+}
+
+dt[title] {
+  text-decoration: underline dotted var(--text-muted);
+  cursor: help;
+}
+
+.explain {
+  margin-top: var(--space-3);
+
+  summary {
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--color-primary);
+  }
+}
+
+.detail .glossary {
+  display: block;
+
+  dt {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-top: var(--space-2);
+  }
+
+  dd {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+  }
+}
+
+.rule-help {
+  display: block;
+  color: var(--text-primary);
+}
+
+.rule-tech {
+  display: block;
+  font-size: var(--font-size-xs);
 }
 
 .detail {

@@ -46,6 +46,8 @@ materials-coverage-atlas/
 │   │   ├── atlas/           # Atlas view: d3/canvas scatter, overlays, legend, coverage table,
 │   │   │                    # and parallel coordinates (parallel-*.ts) with brushing linked to the map;
 │   │   │                    # map-regions.ts names map islands (computed in the browser)
+│   │   │                    # explain.ts holds all plain-language definitions (guide, tooltips,
+│   │   │                    # detail card, legend, axis hovers); atlas-guide.component is "How to read"
 │   │   ├── app.config.ts    # Application providers (router, service worker, global error listeners)
 │   │   ├── app.routes.ts    # Application route definitions
 │   │   ├── app.ts           # Root shell component (header, router outlet, footer)

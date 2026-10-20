@@ -62,7 +62,7 @@ describe('materialDetail', () => {
     const atlas = structuredClone(FIXTURE);
     expect(materialDetail(atlas, 0).category).toBe('Structural');
     atlas.columns.structural_inferred = [1, 0, 0, 0];
-    expect(materialDetail(atlas, 0).category).toBe('Structural (inferred, no elastic data)');
+    expect(materialDetail(atlas, 0).category).toBe('Structural (inferred, no stiffness data)');
   });
 });
 

@@ -36,6 +36,11 @@
 .note {
   font-size: var(--font-size-xs);
   margin: var(--space-2) 0 var(--space-3);
+  max-width: 90ch;
+
+  strong {
+    color: var(--text-primary);
+  }
 }
 
 // The plot keeps a readable minimum width and scrolls inside its own box on phones.
@@ -63,6 +68,7 @@
 // Axes are appended by d3, outside Angular's view encapsulation.
 :host ::ng-deep {
   .pc-title {
+    cursor: help;
     fill: var(--text-primary);
     font-size: 12px;
     font-weight: 600;

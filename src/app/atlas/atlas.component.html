@@ -3,20 +3,27 @@
     <h1 id="atlas-title">Materials Project coverage atlas</h1>
     <p class="lede">
       @if (atlas(); as a) {
-        {{ a.meta.count | number }} materials from Materials Project {{ a.meta.database_version }},
-        laid out by UMAP over composition and property features. Similar materials sit close
-        together; color shows the active overlay.
+        Every dot is one of {{ a.meta.count | number }} materials in the Materials Project, an open
+        database of computer-simulated crystals. Materials with similar chemistry and properties sit
+        close together, so the map shows which kinds of materials have been studied, and where the
+        data runs thin.
         @if (a.meta.sampled) {
           <strong>(random sample)</strong>
         }
       } @else {
-        Every material in the Materials Project database, laid out by composition and properties.
+        Every material in the Materials Project database, arranged so that similar materials sit
+        close together.
       }
     </p>
   </header>
 
+  <app-atlas-guide
+    [experimentalPct]="coverage().at(-1)?.experimentalPct ?? null"
+    [elasticPct]="coverage().at(-1)?.elasticPct ?? null"
+  />
+
   <div class="toolbar">
-    <div class="chip-group" role="radiogroup" aria-label="Overlay">
+    <div class="chip-group" role="radiogroup" aria-label="Color the map by">
       @for (o of overlays; track o.id) {
         <button
           type="button"
@@ -25,6 +32,7 @@
           [attr.aria-checked]="overlayId() === o.id"
           [class.active]="overlayId() === o.id"
           [id]="'overlay-' + o.id"
+          [title]="o.note"
           (click)="setOverlay(o.id)"
         >
           {{ o.label }}
@@ -36,6 +44,7 @@
         type="button"
         class="chip toggle"
         id="toggle-contours"
+        title="Lines that ring crowded areas of the map, like elevation lines"
         [attr.aria-pressed]="showContours()"
         (click)="showContours.set(!showContours())"
       >
@@ -45,6 +54,7 @@
         type="button"
         class="chip toggle"
         id="toggle-regions"
+        title="Names for neighborhoods of the map, from their most common chemistry"
         [attr.aria-pressed]="showRegions()"
         (click)="showRegions.set(!showRegions())"
       >
@@ -58,7 +68,7 @@
       class="plot"
       #plot
       role="img"
-      aria-label="Scatter plot of materials; see the coverage table below for a text summary"
+      aria-label="Map of materials where similar materials sit close together; the coverage table below summarizes it in text"
     >
       <canvas #canvas aria-hidden="true"></canvas>
       <svg #svg class="overlay-layer" aria-hidden="true"></svg>
@@ -89,16 +99,25 @@
           [style.top.px]="tooltipAt().y"
           role="tooltip"
         >
-          <strong>{{ d.formula }}</strong>
-          <span class="muted">{{ d.id }}{{ d.anchor ? ' · ' + d.anchor : '' }}</span>
+          <strong>
+            {{ d.formula }}
+            @if (d.anchor) {
+              <span class="muted">· {{ d.anchor }}</span>
+            }
+          </strong>
           <span><i class="swatch" [style.background]="d.color"></i>{{ d.category }}</span>
-          <span class="muted">
-            Gap {{ d.bandGap ?? '—' }} eV · E<sub>hull</sub> {{ d.eAboveHull ?? '—' }} eV/atom
+          <span>{{ describe.origin(d.theoretical) }}</span>
+          <span>
+            Band gap {{ d.bandGap ?? '—' }} eV:
+            <span class="muted">{{ describe.gap(d.bandGap) }}</span>
           </span>
-          <span class="muted">
-            {{ d.theoretical ? 'Theoretical' : 'Experimental' }} ·
-            {{ d.bulkModulus === null ? 'no elastic data' : 'K ' + d.bulkModulus + ' GPa' }}
+          <span>
+            Stability: <span class="muted">{{ describe.stability(d.eAboveHull) }}</span>
           </span>
+          <span>
+            Stiffness: <span class="muted">{{ describe.stiffness(d.shearModulus) }}</span>
+          </span>
+          <span class="hint">Click for details</span>
         </div>
       }
 
@@ -125,7 +144,12 @@
               (click)="toggleGroup(g.key)"
             >
               <i class="swatch" [style.background]="g.color"></i>
-              <span class="legend-label">{{ g.label }}</span>
+              <span class="legend-text">
+                <span class="legend-label">{{ g.label }}</span>
+                @if (g.help) {
+                  <span class="legend-help">{{ g.help }}</span>
+                }
+              </span>
               <span class="legend-count">{{ g.indices.length | number }}</span>
             </button>
           </li>
@@ -144,48 +168,65 @@
               <span class="muted">· {{ d.anchor }}</span>
             }
           </h2>
-          <a [href]="d.url" target="_blank" rel="noopener noreferrer">{{ d.id }} ↗</a>
+          <a [href]="d.url" target="_blank" rel="noopener noreferrer"
+            >{{ d.id }} on Materials Project ↗</a
+          >
           @if (canShowSimilar()) {
             <button type="button" class="link-button" (click)="similarFor.set(selected())">
               Show similar materials
             </button>
           }
           <dl>
-            <dt>Category</dt>
+            <dt [title]="terms.category.text">Category</dt>
             <dd>
               <i class="swatch" [style.background]="d.color"></i>{{ d.category }}
               @if (d.otherCategories.length) {
                 <span class="muted">(also {{ d.otherCategories.join(', ') }})</span>
               }
             </dd>
-            <dt>Status</dt>
-            <dd>{{ d.theoretical ? 'Theoretical' : 'Experimental' }}</dd>
-            <dt>Band gap</dt>
-            <dd>{{ d.bandGap ?? '—' }} eV</dd>
-            <dt>Formation energy</dt>
+            <dt [title]="terms.theoretical.text">Origin</dt>
+            <dd>{{ describe.origin(d.theoretical) }}</dd>
+            <dt [title]="terms.band_gap.text">Band gap</dt>
+            <dd>
+              {{ d.bandGap ?? '—' }} eV <span class="muted">· {{ describe.gap(d.bandGap) }}</span>
+            </dd>
+            <dt [title]="terms.formation_energy.text">Formation energy</dt>
             <dd>{{ d.formationEnergy ?? '—' }} eV/atom</dd>
-            <dt>E above hull</dt>
-            <dd>{{ d.eAboveHull ?? '—' }} eV/atom</dd>
-            <dt>Bulk / shear</dt>
+            <dt [title]="terms.e_above_hull.text">Stability</dt>
+            <dd>
+              {{ d.eAboveHull ?? '—' }} eV/atom
+              <span class="muted">· {{ describe.stability(d.eAboveHull) }}</span>
+            </dd>
+            <dt [title]="terms.g_vrh.text">Stiffness</dt>
             <dd>
               @if (d.bulkModulus !== null) {
-                {{ d.bulkModulus }} / {{ d.shearModulus }} GPa
+                bulk {{ d.bulkModulus }} / shear {{ d.shearModulus }} GPa
+                <span class="muted">· {{ describe.stiffness(d.shearModulus) }}</span>
               } @else {
-                <span class="muted">no elastic data</span>
+                <span class="muted">not computed (a data gap)</span>
               }
             </dd>
-            <dt>Magnetic order</dt>
+            <dt [title]="terms.ordering.text">Magnetic order</dt>
             <dd>{{ d.ordering }}</dd>
-            <dt>Element cost</dt>
+            <dt [title]="terms.cost.text">Element cost</dt>
             <dd>{{ d.cost === null ? '—' : '$' + fmt(d.cost) + '/kg' }}</dd>
-            <dt>Scarcest element</dt>
+            <dt [title]="terms.abundance.text">Scarcest element</dt>
             <dd>
               {{ d.scarcest ?? '—' }}
               @if (d.abundance !== null) {
-                <span class="muted">({{ fmt(d.abundance) }} ppm)</span>
+                <span class="muted">({{ fmt(d.abundance) }} ppm in Earth's crust)</span>
               }
             </dd>
           </dl>
+          <details class="explain">
+            <summary>What these numbers mean</summary>
+            <dl class="glossary">
+              @for (t of glossary; track t.label) {
+                <dt>{{ t.label }}</dt>
+                <dd>{{ t.text }}</dd>
+              }
+            </dl>
+          </details>
         </div>
       }
       @if (similarAnchor(); as anchor) {
@@ -195,8 +236,10 @@
             <button type="button" class="link-button" (click)="similarFor.set(null)">Close</button>
           </div>
           <p class="note">
-            Nearest {{ similarItems().length }} formulas by composition and properties (not map
-            distance). {{ similarWithElastic() }} have elastic data.
+            The {{ similarItems().length }} compounds closest to {{ anchor.name }} across all ~100
+            traits (not distance on the map). Rings mark them on the map; "×3" means three crystal
+            arrangements of the same compound. {{ similarWithElastic() }} of them have stiffness
+            data.
           </p>
           <div class="chip-group" role="radiogroup" aria-label="Sort similar materials">
             <button
@@ -217,7 +260,7 @@
               [attr.aria-checked]="similarSort() === 'elastic'"
               (click)="similarSort.set('elastic')"
             >
-              Elastic data first
+              Stiffness data first
             </button>
           </div>
           <ol class="similar-list">
@@ -232,16 +275,12 @@
                   <i class="swatch" [style.background]="item.color" [title]="item.category"></i>
                   <span class="similar-formula">{{ item.formula }}</span>
                   @if (item.polymorphs > 1) {
-                    <span class="muted">×{{ item.polymorphs }}</span>
+                    <span class="muted" [title]="item.polymorphs + ' crystal arrangements'"
+                      >×{{ item.polymorphs }}</span
+                    >
                   }
                   <span class="badge" [class.has]="item.withElastic">
-                    {{
-                      item.withElastic
-                        ? item.polymorphs > 1
-                          ? item.withElastic + ' elastic'
-                          : 'elastic'
-                        : 'no elastic'
-                    }}
+                    {{ item.withElastic ? 'stiffness ✓' : 'no stiffness data' }}
                   </span>
                 </button>
               </li>
@@ -251,7 +290,10 @@
       }
 
       @if (atlas(); as a) {
-        <h2 class="side-title">Construction anchors</h2>
+        <h2 class="side-title">Construction landmarks</h2>
+        <p class="note">
+          Everyday building materials, ringed on the map. Pick one to see similar materials.
+        </p>
         <ul class="anchor-list">
           @for (anchor of a.anchors; track anchor.material_id) {
             <li>
@@ -278,14 +320,20 @@
   @if (coverage().length) {
     <section class="panel" aria-labelledby="coverage-title">
       <h2 id="coverage-title">Coverage by category</h2>
+      <p class="note">
+        How much of each category comes with the data you would need to judge it. "Made in a lab" is
+        the share confirmed by experiment, "Stiffness data" the share with computed elastic moduli,
+        and "Cost data" the share where every element has a known price. Low numbers are gaps in the
+        database, not facts about the materials.
+      </p>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th scope="col">Category</th>
               <th scope="col">Materials</th>
-              <th scope="col">Experimental</th>
-              <th scope="col">Elastic data</th>
+              <th scope="col">Made in a lab</th>
+              <th scope="col">Stiffness data</th>
               <th scope="col">Cost data</th>
             </tr>
           </thead>
@@ -308,15 +356,24 @@
   @if (rules().length) {
     <section class="panel" aria-labelledby="rules-title">
       <h2 id="rules-title">Category rules</h2>
+      <p class="note">
+        Every material is checked against each rule using its computed properties. A material can
+        pass several rules; the map colors it by the first match, in the order under "Coloring".
+        These are screening hints for spotting candidates, not verdicts.
+      </p>
       <dl class="rules">
         @for (rule of rules(); track rule.label) {
           <dt>{{ rule.label }}</dt>
-          <dd>{{ rule.text }}</dd>
+          <dd>
+            @if (rule.help) {
+              <span class="rule-help">{{ rule.help }}</span>
+            }
+            <span class="rule-tech">{{ rule.text }}</span>
+          </dd>
         }
       </dl>
       <p class="note">
-        Screening heuristics applied to MP's computed values, not property predictions. MP band gaps
-        are GGA/GGA+U and typically underestimate experiment. Full rationale lives in
+        The computed band gaps tend to run lower than lab measurements. Full rationale lives in
         <code>pipeline/categories.py</code>.
       </p>
     </section>
@@ -327,9 +384,11 @@
     <a href="https://materialsproject.org" target="_blank" rel="noopener noreferrer">
       Materials Project</a
     >
-    (CC BY 4.0)
+    (Lawrence Berkeley National Laboratory; properties computed with density functional theory; CC
+    BY 4.0)
     @if (atlas(); as a) {
-      · {{ a.meta.database_version }} · pulled {{ a.meta.fetched_at.slice(0, 10) }}
+      · version {{ a.meta.database_version }} · pulled {{ a.meta.fetched_at.slice(0, 10) }}
     }
+    · Element prices and crustal abundances: the mendeleev element table · Layout: UMAP.
   </p>
 </section>

@@ -1,4 +1,5 @@
 /** Shape of public/data/atlas.json (written by pipeline/build_atlas.py) and pure helpers over it. */
+import { CATEGORY_HELP } from './explain';
 
 type Maybe<T> = T | null;
 
@@ -64,33 +65,35 @@ export interface Group {
   label: string;
   color: string;
   indices: number[];
+  /** Plain-language meaning, shown under the legend entry. */
+  help?: string;
 }
 
 export const OVERLAYS: Overlay[] = [
   {
     id: 'category',
     label: 'Category',
-    note: 'Primary rule-based candidate category. Click a legend entry to hide or show it.',
+    note: 'What each material might be good for, from simple rules on its computed properties (see "Category rules" below). Click an entry to hide or show it.',
   },
   {
     id: 'experimental',
-    label: 'Experimental vs. theoretical',
-    note: 'Experimental = matched to an observed structure (ICSD); theoretical = computed only.',
+    label: 'Lab-made vs. predicted',
+    note: 'Blue: its crystal has been made and recorded in a lab. Orange: so far it exists only as a computer prediction.',
   },
   {
     id: 'elastic',
-    label: 'Elastic coverage',
-    note: 'Whether MP has computed bulk and shear moduli for the entry.',
+    label: 'Stiffness data',
+    note: 'Blue: Materials Project has computed how stiff it is (its elastic moduli). Orange: no stiffness data yet, which is most of the map.',
   },
   {
     id: 'abundance',
     label: 'Abundance',
-    note: 'Crustal abundance of the scarcest element in the formula (ppm by mass). Brighter = more abundant.',
+    note: "How common the rarest element in each formula is in Earth's crust. Brighter means more common, so easier to source.",
   },
   {
     id: 'cost',
     label: 'Cost',
-    note: 'Mass-weighted raw element price (USD/kg); a floor that ignores processing. Brighter = pricier.',
+    note: 'Raw price of the elements in 1 kg of the material, ignoring processing. Brighter means more expensive.',
   },
 ];
 
@@ -123,17 +126,18 @@ export function buildGroups(atlas: Atlas, overlay: OverlayId): Group[] {
       return atlas.meta.categories.map((key, ci) => ({
         key,
         ...CATEGORY_STYLE[key],
+        help: CATEGORY_HELP[key],
         indices: range(n).filter((i) => c.category[i] === ci),
       }));
     case 'experimental':
       return [
-        group('experimental', 'Experimental', '#3987e5', n, (i) => c.theoretical[i] === 0),
-        group('theoretical', 'Theoretical', '#d95926', n, (i) => c.theoretical[i] === 1),
+        group('experimental', 'Made in a lab', '#3987e5', n, (i) => c.theoretical[i] === 0),
+        group('theoretical', 'Predicted only', '#d95926', n, (i) => c.theoretical[i] === 1),
       ];
     case 'elastic':
       return [
-        group('has', 'Has elastic data', '#3987e5', n, (i) => c.k_vrh[i] !== null),
-        group('missing', 'No elastic data', '#d95926', n, (i) => c.k_vrh[i] === null),
+        group('has', 'Stiffness computed', '#3987e5', n, (i) => c.k_vrh[i] !== null),
+        group('missing', 'No stiffness data', '#d95926', n, (i) => c.k_vrh[i] === null),
       ];
     case 'abundance':
       return binGroups(c.abundance, ABUNDANCE_THRESHOLDS, '', ' ppm');
@@ -300,7 +304,7 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
     url: `https://next-gen.materialsproject.org/materials/${c.id[i]}`,
     category:
       primary === 'structural' && c.structural_inferred?.[i]
-        ? 'Structural (inferred, no elastic data)'
+        ? 'Structural (inferred, no stiffness data)'
         : categoryLabel(primary),
     color: CATEGORY_STYLE[primary]?.color ?? NO_DATA_COLOR,
     otherCategories: categories

@@ -14,6 +14,7 @@ import {
 import { DecimalPipe } from '@angular/common';
 import { brushY, select, type BrushBehavior, type D3BrushEvent, type Selection } from 'd3';
 import { Atlas, Group } from './atlas-data';
+import { TERMS } from './explain';
 import {
   AxisBrush,
   MISSING_T,
@@ -157,6 +158,9 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     title.append('tspan').attr('x', 0).text(name);
     if (unit)
       title.append('tspan').attr('x', 0).attr('dy', 13).attr('class', 'pc-unit').text(`(${unit}`);
+    // Hovering the axis name shows the same plain-language definition as the detail card.
+    const term = TERMS[axis.key as keyof typeof TERMS];
+    if (term) title.append('title').text(term.text);
 
     g.append('line').attr('class', 'pc-line').attr('y1', this.y(0)).attr('y2', this.y(1));
     for (const tick of axis.ticks) {

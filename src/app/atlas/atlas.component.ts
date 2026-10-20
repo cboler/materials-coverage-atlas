@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { AtlasGuideComponent } from './atlas-guide.component';
 import { ParallelCoordinatesComponent } from './parallel-coordinates.component';
 import {
   contourDensity,
@@ -37,6 +38,14 @@ import {
   materialDetail,
   similarMaterials,
 } from './atlas-data';
+import {
+  CATEGORY_HELP,
+  TERMS,
+  describeGap,
+  describeOrigin,
+  describeStability,
+  describeStiffness,
+} from './explain';
 import { findRegions } from './map-regions';
 
 /** d3-contour 4 adds density.contours(); @types/d3-contour 3.x does not declare it yet. */
@@ -68,7 +77,7 @@ const RULE_ORDER = [
 @Component({
   selector: 'app-atlas',
   standalone: true,
-  imports: [DecimalPipe, ParallelCoordinatesComponent],
+  imports: [DecimalPipe, AtlasGuideComponent, ParallelCoordinatesComponent],
   templateUrl: './atlas.component.html',
   styleUrl: './atlas.component.scss',
 })
@@ -79,6 +88,14 @@ export class AtlasComponent implements OnDestroy {
 
   protected readonly overlays = OVERLAYS;
   protected readonly fmt = fmtNumber;
+  protected readonly terms = TERMS;
+  protected readonly glossary = Object.values(TERMS);
+  protected readonly describe = {
+    gap: describeGap,
+    stability: describeStability,
+    stiffness: describeStiffness,
+    origin: describeOrigin,
+  };
   protected readonly atlas = signal<Atlas | null>(null);
   protected readonly state = signal<LoadState>('loading');
   protected readonly overlayId = signal<OverlayId>('category');
@@ -139,6 +156,7 @@ export class AtlasComponent implements OnDestroy {
     const rules = this.atlas()?.meta.rules ?? {};
     return RULE_ORDER.filter((k) => rules[k]).map((k) => ({
       label: k === 'gate' ? 'All categories' : k === 'priority' ? 'Coloring' : categoryLabel(k),
+      help: CATEGORY_HELP[k] ?? null,
       text: rules[k],
     }));
   });

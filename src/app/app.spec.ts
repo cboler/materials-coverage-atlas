@@ -56,18 +56,24 @@ describe('Application Tests', () => {
       fixture.detectChanges();
       const compiled = fixture.nativeElement as HTMLElement;
 
-      expect(compiled.querySelectorAll('[aria-label="Overlay"] .chip')).toHaveLength(5);
+      expect(compiled.querySelectorAll('[aria-label="Color the map by"] .chip')).toHaveLength(5);
       expect(compiled.querySelector('#toggle-contours')?.getAttribute('aria-pressed')).toBe('true');
       expect(compiled.querySelector('#toggle-regions')?.getAttribute('aria-pressed')).toBe('true');
       expect(compiled.querySelectorAll('.legend-item')).toHaveLength(5);
       expect(compiled.querySelector('.anchor-list')?.textContent).toContain('Corundum');
+
+      // Plain-language guidance: the reading guide and a meaning for each category.
+      const guide = compiled.querySelector('app-atlas-guide')?.textContent ?? '';
+      expect(guide).toContain('Why is a dot where it is?');
+      expect(guide).toContain('About 50% of these have also been made in a lab');
+      expect(compiled.querySelector('.legend-help')?.textContent).toContain('carry loads');
       expect(compiled.querySelectorAll('tbody tr')).toHaveLength(6);
       expect(compiled.querySelector('.rules')?.textContent).toContain('stiff');
 
       (compiled.querySelector('#overlay-elastic') as HTMLButtonElement).click();
       fixture.detectChanges();
       const labels = [...compiled.querySelectorAll('.legend-label')].map((e) => e.textContent);
-      expect(labels).toEqual(['Has elastic data', 'No elastic data']);
+      expect(labels).toEqual(['Stiffness computed', 'No stiffness data']);
     });
 
     it('should show the detail card when an anchor is selected', async () => {

@@ -14,9 +14,15 @@
     }
   </div>
   <p class="note">
-    Each line is one material crossing every axis, colored by the active overlay. Drag along an axis
-    to filter; drag into a <em>no data</em> slot to find coverage gaps. Filters also apply to the
-    map above.
+    Each line is one material. Follow it left to right to read its value on each property, with
+    higher values at the top of each axis; hover an axis name to see what it means. Where lines
+    bunch together, many materials share those values. Colors match the map.
+  </p>
+  <p class="note">
+    <strong>Filter:</strong> drag along an axis to keep only materials in that range; the map above
+    highlights the same ones. Each axis has a <em>no data</em> slot at the bottom, and the stiffness
+    axes an <em>unphysical</em> slot at the top for broken calculations, so you can select the gaps
+    too.
   </p>
   <div class="pc-scroll">
     <div class="pc-plot" #plot>

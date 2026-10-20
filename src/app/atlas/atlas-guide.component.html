@@ -1,0 +1,67 @@
+<details class="guide" [open]="startOpen">
+  <summary>How to read this map</summary>
+  <div class="guide-grid">
+    <div>
+      <h3>What is each dot?</h3>
+      <p>
+        One material: a specific compound in a specific crystal arrangement, so diamond and graphite
+        are separate dots even though both are pure carbon. The data comes from the
+        <a href="https://materialsproject.org" target="_blank" rel="noopener noreferrer"
+          >Materials Project</a
+        >, an open database at Lawrence Berkeley National Laboratory that uses quantum-physics
+        simulations to predict how materials behave.
+        @if (experimentalPct() !== null) {
+          About {{ experimentalPct() | number: '1.0-0' }}% of these have also been made in a lab;
+          the rest exist only as predictions.
+        }
+      </p>
+    </div>
+    <div>
+      <h3>Why is a dot where it is?</h3>
+      <p>
+        There are no axes: left, right, up and down don't measure anything. Each material is
+        described by about 100 traits (which elements it contains and in what proportions, plus
+        properties such as band gap and density). An algorithm called UMAP flattens those traits
+        onto the page so that materials with similar traits land near each other.
+      </p>
+      <p>
+        So neighbors are similar, and islands are families of related materials. The distance
+        between two far-apart islands doesn't mean much.
+      </p>
+    </div>
+    <div>
+      <h3>What do the colors and marks show?</h3>
+      <ul>
+        <li>
+          <strong>Color</strong>: the view picked in the buttons below; the legend explains it.
+        </li>
+        <li>
+          <strong>White rings</strong>: familiar construction materials (calcite, quartz, iron…) as
+          landmarks.
+        </li>
+        <li>
+          <strong>Grey names</strong>: neighborhoods, named after the chemistry most common there.
+        </li>
+        <li>
+          <strong>Faint lines</strong>: density contours. Like elevation lines on a hiking map, they
+          ring the crowded areas.
+        </li>
+      </ul>
+    </div>
+    <div>
+      <h3>Why "coverage"?</h3>
+      <p>
+        Most properties have not been computed for most materials.
+        @if (elasticPct() !== null) {
+          Stiffness, for example, exists for only {{ elasticPct() | number: '1.0-0' }}% of them.
+        }
+        This atlas shows where data exists and where it is missing. A missing value means "not
+        computed yet", not "zero".
+      </p>
+      <p class="muted">
+        Hover or tap a dot for a summary · scroll or pinch to zoom · drag to pan · pick a landmark
+        to see materials like it.
+      </p>
+    </div>
+  </div>
+</details>

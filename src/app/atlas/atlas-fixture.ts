@@ -33,5 +33,5 @@ export const FIXTURE: Atlas = {
     abundance: [82300, 56300, null, 0.005],
     scarcest: ['Al', 'Fe', null, 'Xx'],
   },
-  anchors: [{ name: 'Corundum', material_id: 'mp-1143', index: 0 }],
+  anchors: [{ name: 'Corundum', material_id: 'mp-1143', index: 0, similar: [2, 1, 3] }],
 };

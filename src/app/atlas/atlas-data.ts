@@ -41,6 +41,8 @@ export interface Anchor {
   name: string;
   material_id: string;
   index: number;
+  /** Nearest materials in feature space, nearest first. Absent in atlas files built before it. */
+  similar?: number[];
 }
 
 export interface Atlas {
@@ -233,6 +235,59 @@ export interface MaterialDetail {
   abundance: Maybe<number>;
   scarcest: Maybe<string>;
   anchor: Maybe<string>;
+}
+
+/** One formula among an anchor's neighbors; polymorphs (same formula) are grouped. */
+export interface SimilarItem {
+  /** Entry to select: the nearest polymorph with elastic data, else the nearest polymorph. */
+  index: number;
+  /** 1 = most similar formula. */
+  rank: number;
+  formula: string;
+  id: string;
+  category: string;
+  color: string;
+  polymorphs: number;
+  /** How many of those polymorphs have elastic data. */
+  withElastic: number;
+}
+
+/** Distinct formulas shown per anchor. */
+export const SIMILAR_SHOWN = 20;
+
+export type SimilarSort = 'similarity' | 'elastic';
+
+/**
+ * An anchor's precomputed neighbors grouped by formula, in similarity order or with formulas that
+ * have elastic data first (similarity order kept within each group): "what near portlandite
+ * already has moduli?"
+ */
+export function similarMaterials(atlas: Atlas, anchor: Anchor, sort: SimilarSort): SimilarItem[] {
+  const c = atlas.columns;
+  const byFormula = new Map<string, number[]>();
+  for (const i of anchor.similar ?? []) {
+    const list = byFormula.get(c.formula[i]) ?? [];
+    list.push(i);
+    byFormula.set(c.formula[i], list);
+  }
+  const items = [...byFormula].slice(0, SIMILAR_SHOWN).map(([formula, entries], k): SimilarItem => {
+    const elastic = entries.filter((i) => c.k_vrh[i] !== null);
+    const index = elastic[0] ?? entries[0];
+    const key = atlas.meta.categories[c.category[index]];
+    return {
+      index,
+      rank: k + 1,
+      formula,
+      id: c.id[index],
+      category: categoryLabel(key),
+      color: CATEGORY_STYLE[key]?.color ?? NO_DATA_COLOR,
+      polymorphs: entries.length,
+      withElastic: elastic.length,
+    };
+  });
+  return sort === 'elastic'
+    ? [...items.filter((x) => x.withElastic), ...items.filter((x) => !x.withElastic)]
+    : items;
 }
 
 export function materialDetail(atlas: Atlas, i: number): MaterialDetail {

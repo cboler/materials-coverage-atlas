@@ -1,4 +1,10 @@
-import { buildGroups, coverageRows, fmtNumber, materialDetail } from './atlas-data';
+import {
+  buildGroups,
+  coverageRows,
+  fmtNumber,
+  materialDetail,
+  similarMaterials,
+} from './atlas-data';
 import { FIXTURE } from './atlas-fixture';
 
 describe('buildGroups', () => {
@@ -68,5 +74,45 @@ describe('fmtNumber', () => {
     expect(fmtNumber(1e12)).toBe('1e12');
     expect(fmtNumber(2.9e13)).toBe('2.9e13');
     expect(fmtNumber(5.5e-10)).toBe('5.5e-10');
+  });
+});
+
+describe('similarMaterials', () => {
+  // Corundum's neighbors: GaAs, Fe, Xx, then a second GaAs (no data) and a second Fe polymorph.
+  const atlas = structuredClone(FIXTURE);
+  const c = atlas.columns;
+  const polymorph = (of: number, k_vrh: number | null) => {
+    for (const key of Object.keys(c) as (keyof typeof c)[]) {
+      (c[key] as unknown[]).push((c[key] as unknown[])[of]);
+    }
+    c.k_vrh[c.k_vrh.length - 1] = k_vrh;
+    return c.id.length - 1;
+  };
+  const gaas2 = polymorph(2, null);
+  const fe2 = polymorph(1, null);
+  const anchor = { ...atlas.anchors[0], similar: [2, 1, 3, gaas2, fe2] };
+
+  it('groups polymorphs by formula in similarity order, counting elastic coverage', () => {
+    const items = similarMaterials(atlas, anchor, 'similarity');
+    expect(items.map((x) => [x.rank, x.formula, x.polymorphs, x.withElastic])).toEqual([
+      [1, 'GaAs', 2, 0],
+      [2, 'Fe', 2, 1],
+      [3, 'Xx', 1, 0],
+    ]);
+    expect(items[1].category).toBe('Magnetic');
+  });
+
+  it('selects the polymorph that has elastic data when one exists', () => {
+    const fe = similarMaterials(atlas, { ...anchor, similar: [fe2, 1] }, 'similarity')[0];
+    expect(fe.index).toBe(1); // mp-13 has moduli; the nearer polymorph does not
+  });
+
+  it('can put formulas with elastic data first, keeping similarity order within groups', () => {
+    const items = similarMaterials(atlas, anchor, 'elastic');
+    expect(items.map((x) => x.formula)).toEqual(['Fe', 'GaAs', 'Xx']);
+  });
+
+  it('is empty for atlas files built before neighbors existed', () => {
+    expect(similarMaterials(atlas, { ...anchor, similar: undefined }, 'similarity')).toEqual([]);
   });
 });

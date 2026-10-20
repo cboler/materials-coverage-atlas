@@ -56,7 +56,9 @@ describe('Application Tests', () => {
       fixture.detectChanges();
       const compiled = fixture.nativeElement as HTMLElement;
 
-      expect(compiled.querySelectorAll('.toolbar .chip')).toHaveLength(5);
+      expect(compiled.querySelectorAll('[aria-label="Overlay"] .chip')).toHaveLength(5);
+      expect(compiled.querySelector('#toggle-contours')?.getAttribute('aria-pressed')).toBe('true');
+      expect(compiled.querySelector('#toggle-regions')?.getAttribute('aria-pressed')).toBe('true');
       expect(compiled.querySelectorAll('.legend-item')).toHaveLength(5);
       expect(compiled.querySelector('.anchor-list')?.textContent).toContain('Corundum');
       expect(compiled.querySelectorAll('tbody tr')).toHaveLength(6);

@@ -3,6 +3,7 @@
     python pipeline/build_atlas.py              # uses the local cache after the first run
     python pipeline/build_atlas.py --refresh    # re-pull from the Materials Project API
     python pipeline/build_atlas.py --sample 20000   # quick iteration on a random subset
+    python pipeline/build_atlas.py --out /tmp/atlas.json   # trial build without touching public/
 
 The output is columnar (one array per field) to keep ~150k materials small enough to load
 in a browser; coordinates are quantized to integers 0..COORD_SCALE.
@@ -21,12 +22,15 @@ import pandas as pd
 from pymatgen.core import Composition
 
 from categories import CATEGORIES, RULES, WORKING_IONS, assign_categories
-from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix
+from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
 from fetch import load_summary
 from supply import supply_metrics
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "public" / "data" / "atlas.json"
 COORD_SCALE = 10000
+# Raw neighbors stored per anchor. Polymorphs crowd the top (calcite has 8+ CaCO3 entries), and
+# the UI groups them by formula, so this is generous to leave ~20 distinct formulas.
+SIMILAR_K = 60
 ORDERINGS = ["NM", "FM", "FiM", "AFM", "Unknown"]
 
 # Construction-material anchors. Each is resolved to an MP entry by reduced formula, preferring
@@ -89,7 +93,7 @@ def _sig(values, figures: int = 3) -> list:
     return out
 
 
-def build(refresh: bool, sample: int | None) -> None:
+def build(refresh: bool, sample: int | None, out_path: Path) -> None:
     df, cache_meta = load_summary(refresh)
     df = df.dropna(subset=["formula"]).reset_index(drop=True)
 
@@ -123,7 +127,8 @@ def build(refresh: bool, sample: int | None) -> None:
     print(f"  (structural by composition, no elastic data: {inferred.sum()})")
 
     print("Building features...")
-    coords = embed(feature_matrix(df, compositions))
+    features = feature_matrix(df, compositions)
+    coords = embed(features)
     lo, hi = coords.min(axis=0), coords.max(axis=0)
     quantized = np.rint((coords - lo) / (hi - lo).max() * COORD_SCALE).astype(int)
 
@@ -165,17 +170,26 @@ def build(refresh: bool, sample: int | None) -> None:
             "abundance": _sig(abundance),
             "scarcest": list(scarcest),
         },
-        "anchors": [{**a, "index": index_of[a["material_id"]]} for a in anchors if a["material_id"] in index_of],
+        "anchors": [
+            {
+                **a,
+                "index": index_of[a["material_id"]],
+                "similar": nearest_neighbors(features, index_of[a["material_id"]], SIMILAR_K),
+            }
+            for a in anchors
+            if a["material_id"] in index_of
+        ],
     }
 
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(json.dumps(atlas, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
-    print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1e6:.1f} MB, {len(df)} materials).")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(atlas, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    print(f"Wrote {out_path} ({out_path.stat().st_size / 1e6:.1f} MB, {len(df)} materials).")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--refresh", action="store_true", help="ignore the cache and re-pull from the API")
     parser.add_argument("--sample", type=int, help="embed a random subset of N materials")
+    parser.add_argument("--out", type=Path, default=OUT_PATH, help="output path (default: public/data/atlas.json)")
     args = parser.parse_args()
-    build(args.refresh, args.sample)
+    build(args.refresh, args.sample, args.out)

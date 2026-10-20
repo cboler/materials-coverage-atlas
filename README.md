@@ -11,6 +11,11 @@ coverage is thin.
   coverage (which entries lack bulk/shear moduli).
 - **Anchors**: calcite, gypsum, portlandite, alite, belite, quartz, corundum, iron and aluminum
   are pinned and labeled as reference points.
+- **Region labels and density contours**: islands of the map are named by their dominant chemistry
+  ("Li halides", "Sr–Ca nitrides", "Mn–Fe oxides"), and contours show where materials concentrate.
+- **Find similar**: each anchor lists its nearest materials by composition and properties, marking
+  which have elastic data (e.g. portlandite's neighbors are cement hydrates such as katoite and
+  Friedel's salt, and only 2 of 20 have moduli).
 - **Property profiles**: a parallel coordinates view with brushing. Every material is a line across
   category, origin, band gap, formation energy, hull energy, moduli, cost and abundance. Dragging a
   range on any axis filters both the lines and the map, and "no data" / "unphysical" slots on
@@ -80,7 +85,12 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
 - **Overlay buttons** recolor the map. **Legend entries** hide or show a group. With five
   categories on one scatter, no palette keeps every pair distinct under color-vision deficiency,
   so isolating groups from the legend is the reliable way to compare them.
-- **Construction anchors** in the side panel select the pinned reference materials.
+- **Construction anchors** in the side panel (or on the map) select a reference material and open
+  its **Similar to …** panel: the nearest formulas in feature space (not map distance), with
+  polymorphs grouped and elastic coverage marked. Sort by similarity or put entries with elastic
+  data first; neighbors are ringed on the map.
+- **Contours** and **Region labels** toggle in the toolbar. Contours follow the legend: hide every
+  group but one to see that category's shape. Region labels appear as you zoom in.
 - **Property profiles**: drag along any axis to keep only lines in that range; brushes on several
   axes combine (AND). Drag into an axis's _no data_ slot to find entries missing that property, or
   its _unphysical_ slot to find broken elastic fits. Click an axis outside its brush, or use

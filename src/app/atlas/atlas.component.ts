@@ -12,11 +12,16 @@ import {
 import { DecimalPipe } from '@angular/common';
 import { ParallelCoordinatesComponent } from './parallel-coordinates.component';
 import {
+  contourDensity,
+  geoPath,
   quadtree,
   select,
   zoom,
   zoomIdentity,
+  type ContourDensity,
+  type ContourMultiPolygon,
   type Quadtree,
+  type Selection,
   type ZoomBehavior,
   type ZoomTransform,
 } from 'd3';
@@ -24,18 +29,31 @@ import {
   Atlas,
   OVERLAYS,
   OverlayId,
+  SimilarSort,
   buildGroups,
   categoryLabel,
   coverageRows,
   fmtNumber,
   materialDetail,
+  similarMaterials,
 } from './atlas-data';
+import { findRegions } from './map-regions';
+
+/** d3-contour 4 adds density.contours(); @types/d3-contour 3.x does not declare it yet. */
+type ContourDensityV4 = ContourDensity<number> & {
+  contours(data: number[]): ((threshold: number) => ContourMultiPolygon) & { max: number };
+};
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 const DATA_URL = 'data/atlas.json'; // relative: resolves against <base href> on GitHub Pages
 const PADDING = 24;
 const FILTERED_OUT = '#2b3343';
+// Density contour levels as fractions of peak density. Below ~2% the lines trace stray points.
+const CONTOUR_LEVELS = [0.02, 0.07, 0.25];
+const CONTOUR_BANDWIDTH = 8; // world px
+/** Region labels appear once their island spans this many screen pixels. */
+const REGION_MIN_PX = 36;
 const HOVER_RADIUS = 10; // screen px; larger than the marks so small points are easy to hit
 const RULE_ORDER = [
   'gate',
@@ -74,6 +92,37 @@ export class AtlasComponent implements OnDestroy {
     return mask ? mask.reduce((n, v) => n + v, 0) : null;
   });
   protected readonly tooltipAt = signal({ x: 0, y: 0, flip: false });
+  protected readonly showContours = signal(true);
+  /** Index of the anchor whose "similar materials" panel is open. */
+  protected readonly similarFor = signal<number | null>(null);
+  protected readonly similarSort = signal<SimilarSort>('similarity');
+  protected readonly similarAnchor = computed(() => {
+    const i = this.similarFor();
+    return this.atlas()?.anchors.find((a) => a.index === i && a.similar?.length) ?? null;
+  });
+  protected readonly similarItems = computed(() => {
+    const atlas = this.atlas();
+    const anchor = this.similarAnchor();
+    return atlas && anchor ? similarMaterials(atlas, anchor, this.similarSort()) : [];
+  });
+  protected readonly similarWithElastic = computed(
+    () => this.similarItems().filter((x) => x.withElastic).length,
+  );
+  /** Whether the selected material is an anchor with neighbors whose panel is closed. */
+  protected readonly canShowSimilar = computed(() => {
+    const i = this.selected();
+    return (
+      i !== null &&
+      this.similarFor() !== i &&
+      !!this.atlas()?.anchors.some((a) => a.index === i && a.similar?.length)
+    );
+  });
+  protected readonly showRegions = signal(true);
+  /** Named islands of the map (computed once per data load; ~0.2 s for the full database). */
+  private readonly regions = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? findRegions(atlas) : [];
+  });
 
   protected readonly groups = computed(() => {
     const atlas = this.atlas();
@@ -103,6 +152,12 @@ export class AtlasComponent implements OnDestroy {
   /** Point positions in "world" pixels (fit to the plot at zoom 1). */
   private wx = new Float32Array(0);
   private wy = new Float32Array(0);
+  /** Quantized data coordinates -> world pixels: world = offset + value * scale. */
+  private toWorld = { ox: 0, oy: 0, scale: 1 };
+  private layers?: Record<
+    'contours' | 'regions' | 'anchors',
+    Selection<SVGGElement, unknown, null, undefined>
+  >;
   private tree?: Quadtree<number>;
   private frame = 0;
   private resizeObserver?: ResizeObserver;
@@ -117,13 +172,24 @@ export class AtlasComponent implements OnDestroy {
       this.hidden();
       untracked(() => {
         this.buildTree();
+        this.drawContours();
         this.scheduleDraw();
       });
+    });
+    effect(() => {
+      this.showContours();
+      untracked(() => this.drawContours());
+    });
+    effect(() => {
+      this.showRegions();
+      this.regions();
+      untracked(() => this.scheduleDraw());
     });
     effect(() => {
       this.hovered();
       this.selected();
       this.filterMask();
+      this.similarAnchor();
       untracked(() => this.scheduleDraw());
     });
   }
@@ -155,6 +221,13 @@ export class AtlasComponent implements OnDestroy {
 
   protected selectAnchor(index: number): void {
     this.selected.set(index);
+    this.similarFor.set(index);
+  }
+
+  /** Select a point; selecting an anchor also opens its similar-materials panel. */
+  private selectPoint(i: number | null): void {
+    this.selected.set(i);
+    if (i !== null && this.atlas()?.anchors.some((a) => a.index === i)) this.similarFor.set(i);
   }
 
   private async load(): Promise<void> {
@@ -189,6 +262,12 @@ export class AtlasComponent implements OnDestroy {
         this.scheduleDraw();
       });
     select(svg).call(this.zoomBehavior);
+    // Bottom to top: contours, region labels, anchors.
+    this.layers = {
+      contours: select(svg).append('g').attr('class', 'contours'),
+      regions: select(svg).append('g').attr('class', 'regions'),
+      anchors: select(svg).append('g').attr('class', 'anchors'),
+    };
 
     svg.addEventListener('pointermove', (e) => {
       const i = this.pick(e);
@@ -199,7 +278,7 @@ export class AtlasComponent implements OnDestroy {
       }
     });
     svg.addEventListener('pointerleave', () => this.hovered.set(null));
-    svg.addEventListener('click', (e) => this.selected.set(this.pick(e)));
+    svg.addEventListener('click', (e) => this.selectPoint(this.pick(e)));
 
     this.resizeObserver = new ResizeObserver(() => this.layout());
     this.resizeObserver.observe(this.plotRef().nativeElement);
@@ -234,9 +313,11 @@ export class AtlasComponent implements OnDestroy {
       const scale = Math.min((width - 2 * PADDING) / xMax, (height - 2 * PADDING) / yMax);
       const ox = (width - xMax * scale) / 2;
       const oy = (height - yMax * scale) / 2;
+      this.toWorld = { ox, oy, scale };
       this.wx = Float32Array.from(x, (v) => ox + v * scale);
       this.wy = Float32Array.from(y, (v) => oy + v * scale);
       this.buildTree();
+      this.drawContours();
     }
     this.scheduleDraw();
   }
@@ -269,7 +350,8 @@ export class AtlasComponent implements OnDestroy {
     if (!ctx || !width) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    this.drawAnchors();
+    this.layers?.contours.attr('transform', this.transform.toString());
+    this.drawRegions(this.drawAnchors());
     if (this.wx.length === 0) return;
 
     const t = this.transform;
@@ -292,6 +374,20 @@ export class AtlasComponent implements OnDestroy {
       this.drawGroup(ctx, g.indices, g.color, t, matchR, mask ? (i) => mask[i] === 1 : undefined);
     }
     ctx.globalAlpha = 1;
+
+    // Neighbors of the open "similar" anchor: thin rings, so they stay findable at any zoom.
+    const neighbors = this.similarAnchor()?.similar ?? [];
+    if (neighbors.length) {
+      ctx.beginPath();
+      for (const i of neighbors) {
+        const [x, y] = t.apply([this.wx[i], this.wy[i]]);
+        ctx.moveTo(x + r + 2.5, y);
+        ctx.arc(x, y, r + 2.5, 0, 2 * Math.PI);
+      }
+      ctx.lineWidth = 1.25;
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.stroke();
+    }
 
     for (const i of [this.selected(), this.hovered()]) {
       if (i === null) continue;
@@ -331,8 +427,11 @@ export class AtlasComponent implements OnDestroy {
     if (!useRects) ctx.fill();
   }
 
-  /** Construction-material anchors: ringed markers with greedy collision-avoiding labels. */
-  private drawAnchors(): void {
+  /**
+   * Construction-material anchors: ringed markers with greedy collision-avoiding labels.
+   * Returns the screen boxes they occupy so region labels can stay clear of them.
+   */
+  private drawAnchors(): { x: number; y: number; w: number }[] {
     const atlas = this.atlas();
     const anchors = atlas && this.wx.length ? atlas.anchors : [];
     const t = this.transform;
@@ -368,7 +467,8 @@ export class AtlasComponent implements OnDestroy {
         return { ...a, ...spot };
       });
 
-    const g = select(this.svgRef().nativeElement)
+    if (!this.layers) return placed;
+    const g = this.layers.anchors
       .selectAll<SVGGElement, (typeof positions)[number]>('g.anchor')
       .data(positions, (d) => d.material_id)
       .join((enter) => {
@@ -391,5 +491,65 @@ export class AtlasComponent implements OnDestroy {
       .attr('y', (d) => d.ly)
       .attr('text-anchor', (d) => d.anchor)
       .text((d) => d.name);
+    return placed;
+  }
+
+  /** Island names, largest first, shown once an island is big enough on screen and clear of anchors. */
+  private drawRegions(taken: { x: number; y: number; w: number }[]): void {
+    if (!this.layers) return;
+    const { ox, oy, scale } = this.toWorld;
+    const t = this.transform;
+    const { width, height } = this.size;
+    const LABEL_H = 14;
+    const placed = [...taken];
+    const visible = (this.showRegions() && this.wx.length ? this.regions() : []).flatMap((r) => {
+      if (Math.max(r.width, r.height) * scale * t.k < REGION_MIN_PX) return [];
+      const [x, y] = t.apply([ox + r.x * scale, oy + r.y * scale]);
+      const w = r.label.length * 7.4 + 8;
+      const box = { x: x - w / 2, y, w };
+      const clear = placed.every(
+        (p) => box.x + w < p.x || box.x > p.x + p.w || Math.abs(y - p.y) >= LABEL_H,
+      );
+      if (!clear || box.x < 2 || box.x + w > width - 2 || y < LABEL_H || y > height - 4) return [];
+      placed.push(box);
+      return [{ ...r, sx: x, sy: y }];
+    });
+
+    this.layers.regions
+      .selectAll<SVGTextElement, (typeof visible)[number]>('text')
+      .data(visible, (d) => `${d.label}@${d.x},${d.y}`)
+      .join('text')
+      .attr('class', 'region-label')
+      .attr('x', (d) => d.sx)
+      .attr('y', (d) => d.sy)
+      .text((d) => d.label);
+  }
+
+  /** Density contours of the visible points, in world coordinates (zoom just transforms them). */
+  private drawContours(): void {
+    if (!this.layers) return;
+    const { width, height } = this.size;
+    const hidden = this.hidden();
+    const indices =
+      this.showContours() && this.wx.length && width
+        ? this.groups().flatMap((g) => (hidden.has(g.key) ? [] : g.indices))
+        : [];
+    let levels: ContourMultiPolygon[] = [];
+    if (indices.length) {
+      const estimator = contourDensity<number>()
+        .x((i) => this.wx[i])
+        .y((i) => this.wy[i])
+        .size([width, height])
+        .bandwidth(CONTOUR_BANDWIDTH) as ContourDensityV4;
+      // One density pass, then contours at fractions of its peak (thresholds aren't known upfront).
+      const density = estimator.contours(indices);
+      levels = CONTOUR_LEVELS.map((f) => density(density.max * f));
+    }
+    this.layers.contours
+      .selectAll('path')
+      .data(levels)
+      .join('path')
+      .attr('class', (_, k) => `contour level-${k}`)
+      .attr('d', geoPath());
   }
 }

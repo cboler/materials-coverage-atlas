@@ -16,6 +16,7 @@ Each record outlines the context, rationale, consequences, and trade-offs of sig
 - [ADR-006: Offline Python Pipeline with Committed Atlas JSON](#adr-006-offline-python-pipeline-with-committed-atlas-json)
 - [ADR-007: Canvas Points with d3 Zoom and an SVG Anchor Layer](#adr-007-canvas-points-with-d3-zoom-and-an-svg-anchor-layer)
 - [ADR-008: Parallel Coordinates with Missing/Unphysical Slots and Linked Brushing](#adr-008-parallel-coordinates-with-missingunphysical-slots-and-linked-brushing)
+- [ADR-009: Region Labels in the Browser, Similarity in the Pipeline](#adr-009-region-labels-in-the-browser-similarity-in-the-pipeline)
 
 ---
 
@@ -206,6 +207,29 @@ The map shows similarity but not how properties co-vary, and the atlas's core qu
 
 - **Positive**: Coverage and data-quality gaps become something you can select and see on the map.
 - **Trade-off**: Sampling means rare profiles inside a very large match set may not show as lines until brushed narrower. Counts and the map are exact.
+
+---
+
+## ADR-009: Region Labels in the Browser, Similarity in the Pipeline
+
+### Status
+
+Accepted
+
+### Context
+
+The map's islands were unlabeled, dense regions buried small groups, and there was no way to ask "what is close to portlandite and already has elastic data?". Labels and contours only need 2D coordinates and formulas, which `atlas.json` already has. True similarity needs the ~100-dimensional feature vectors, which only the pipeline has; shipping neighbors for every material would add 15–20 MB.
+
+### Decision
+
+- **Region labels and contours are computed in the browser.** Regions come from connected components on a coarse grid over the quantized coordinates. Islands above 6% of the database are re-split at double the density threshold until they break apart, because one plain grid pass left a 105k-material "continent". Names combine the dominant chemical family (silicates, phosphates, metal–organics, halides, intermetallics, …) with up to two elements that are at least 1.5× over-represented and present in at least 25% of the island. Contours use `d3.contourDensity` at fixed fractions of peak density.
+- **Neighbors are computed in the pipeline, for anchors only.** Brute-force Euclidean distance in the same standardized, block-weighted feature space as UMAP; 60 per anchor, grouped by formula in the UI.
+
+### Consequences
+
+- **Positive**: Labels and contours need no data regeneration and adapt to legend toggles. Neighbor lists are small and chemically meaningful (portlandite's neighbors are cement hydrates).
+- **Trade-off**: Region detection takes about 0.2 s on load. Labels depend on the UMAP layout, so a regenerated layout can rename or re-split regions.
+- **Trade-off**: "Find similar" covers only the anchors until per-material neighbors (Web Worker kNN on a quantized feature matrix) are justified.
 
 ---
 

@@ -14,8 +14,15 @@
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
   margin-bottom: var(--space-4);
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .chip {
@@ -35,6 +42,12 @@
     background: var(--color-primary);
     border-color: var(--color-primary);
     font-weight: 600;
+  }
+
+  // Layer toggles read as on/off switches (outlined), distinct from the filled overlay choice.
+  &.toggle[aria-pressed='true'] {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
   }
 }
 
@@ -70,6 +83,27 @@
 }
 
 // d3-joined anchor marks live inside the SVG, outside Angular's view encapsulation.
+:host ::ng-deep .contour {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-opacity: 0.22;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+:host ::ng-deep .region-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--bg-surface);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
 :host ::ng-deep .anchor {
   pointer-events: none;
 
@@ -254,6 +288,58 @@
 .detail-title {
   font-size: var(--font-size-lg);
   margin-bottom: var(--space-1);
+}
+
+.similar {
+  margin-top: var(--space-4);
+}
+
+.similar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.chip.small {
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-3);
+}
+
+.similar-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.similar-item {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  min-height: var(--touch-target-min);
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+
+  &:hover,
+  &.current {
+    background: var(--bg-surface-elevated);
+  }
+}
+
+.similar-formula {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-mono);
+}
+
+.badge {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+
+  &.has {
+    color: var(--color-success);
+  }
 }
 
 .panel {

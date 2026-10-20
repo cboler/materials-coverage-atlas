@@ -36,6 +36,8 @@ test.describe('Responsive Shell Smoke Tests', () => {
     if (await legend.isVisible()) {
       await expect(page.locator('#coverage-title')).toBeVisible();
       await expect(page.locator('#pc-title')).toBeVisible();
+      await expect(page.locator('#toggle-contours')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('svg.overlay-layer g.contours path').first()).toBeAttached();
       await expect(page.locator('app-parallel-coordinates g.pc-axis')).toHaveCount(9);
 
       // 4. Overlay switching updates the legend

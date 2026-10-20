@@ -77,23 +77,16 @@ Findings from the shipped data (MP v2026.09.28, 154,377 materials):
 - [x] Narrow the battery-electrode rule. Once magnetic stopped outranking it, the old rule (any Li/Na/K/Mg/Zn + redox metal + gap > 0) put energy at 22,701, and it missed metallic electrodes such as LiNiO2 and LiTiS2. The new rule requires the working ion to be ≥ 5% of atoms, an O/F/S/P/Se/N framework, no Rb/Cs/Ca/Sr/Ba, and a hull distance ≤ 0.05 eV/atom, with any band gap. Battery matches go from 16,814 to 9,735, and it keeps all 19 reference electrodes checked (the old rule kept 15).
 - [ ] Regenerate `atlas.json` and review category counts and anchor assignments. Expected from a dry run on the cache: structural 10,494 (4,357 inferred), energy 16,871, electronic/optical 27,693, magnetic 14,833, unclassified 84,486.
 
-### Phase 3: Orientation and discovery (documented, not yet scheduled)
+### Phase 3: Orientation and discovery
 
-Proposed after a review of recent visualization work. Not implemented; each needs a design pass before work starts.
+Proposed after a review of recent visualization work (Embedding Atlas, PixelatedScatter, OptiMate). See ADR-009.
 
-- [ ] **Cluster labels**: name the UMAP islands so the map is readable without hovering.
-  - _Pipeline_: density-based clustering on the 2D coordinates (e.g. HDBSCAN), then a label per cluster from its dominant chemistry: most common element set or anion class ("Li–TM oxides", "Ca silicates", "intermetallics"). Ship as `clusters: [{label, x, y, size}]` plus a per-material cluster id.
-  - _UI_: labels at cluster centroids, collision-avoided like the anchor labels, shown or hidden by zoom level.
-  - _Prior art_: Apple's Embedding Atlas (automatic clustering and labeling; arXiv 2505.06386).
-- [ ] **Density contours**: show where materials concentrate and keep small groups from being buried by overdraw.
-  - _UI_: `d3-contour` (already in the d3 bundle) over world coordinates, as an outline layer in the SVG overlay. Either one contour set for all points, or per category when a legend group is isolated. Recompute on resize, not on zoom (contours are transformed with the view).
-  - _Option_: a majority-category-per-pixel mode for dense regions, after PixelatedScatter (TVCG 2025).
-  - _Prior art_: Embedding Atlas (KDE density contours, order-independent transparency).
-- [ ] **Find similar**: "the 25 materials closest to portlandite, ranked by whether they have elastic data", to support substitution and gap-filling around the construction anchors.
-  - _Similarity must use the feature space, not 2D map distance_, because UMAP distorts distances between clusters.
-  - _Options_: (a) precompute top-k neighbors in the pipeline (k=25 is about 3.9M ints, roughly 15–20 MB of JSON, too large to load by default); (b) precompute neighbors only for anchors and a curated list (small); (c) ship a compact quantized feature matrix and compute kNN in a Web Worker on demand. Start with (b) and revisit (c) if users want it for arbitrary materials.
-  - _UI_: a "Similar materials" list in the detail card, highlighted on the map and in the property profiles.
-  - _Prior art_: OptiMate (arXiv 2501.05903) uses UMAP maps to find substitute materials; Embedding Atlas offers nearest-neighbor search.
+- [x] **Region labels**: islands of the map named by dominant chemistry, computed in the browser from `atlas.json` (`map-regions.ts`). Grid-based connected components with hierarchical re-splitting of oversized islands (the HDBSCAN idea); names come from the dominant chemical family plus the most over-represented elements. 33 regions on MP v2026.09.28. Labels yield to anchor labels and appear as islands grow on screen.
+- [x] **Density contours**: `d3.contourDensity` over the visible points (follows legend toggles) at 2%, 7% and 25% of peak density; recomputed on resize or visibility change, transformed on zoom. Toggleable.
+  - _Not done_: a majority-category-per-pixel mode for dense regions (PixelatedScatter, TVCG 2025).
+- [x] **Find similar** for anchors (option b): 60 nearest neighbors per anchor in the standardized UMAP feature space, computed in the pipeline (`nearest_neighbors` in `embed.py`) and grouped by formula in the UI so polymorphs don't crowd the list. A side panel shows the top 20 formulas with elastic-data counts, sortable with elastic data first; neighbors are ringed on the map.
+  - _Needs a data regeneration_ to appear on the site; older `atlas.json` files simply have no neighbors.
+  - _Not done_: neighbors for arbitrary materials (option c: quantized feature matrix plus kNN in a Web Worker), and highlighting neighbors in the property profiles.
 
 Considered and deferred: Mosaic/DuckDB-WASM linked views (built for millions to billions of rows; 154k fits in memory), a WebGPU renderer (the canvas draws in about 6 ms median and 30 ms p95), and natural-language queries (brushes already express those filters).
 

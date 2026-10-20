@@ -94,6 +94,20 @@ def feature_matrix(df: pd.DataFrame, compositions: list[Composition]) -> np.ndar
     ).astype(np.float32)
 
 
+def nearest_neighbors(features: np.ndarray, index: int, k: int) -> list[int]:
+    """Indices of the k materials closest to `index` in feature space, nearest first.
+
+    Uses the same standardized, block-weighted features as UMAP, but true Euclidean distance:
+    UMAP preserves neighborhoods, not distances, so 2D map proximity can mislead between clusters.
+    Brute force is fine for a handful of query materials (one pass over ~150k x ~100 floats each).
+    """
+    distances = np.linalg.norm(features - features[index], axis=1)
+    distances[index] = np.inf
+    k = min(k, len(features) - 1)
+    nearest = np.argpartition(distances, k)[:k]
+    return nearest[np.argsort(distances[nearest])].tolist()
+
+
 def embed(features: np.ndarray) -> np.ndarray:
     """2D UMAP coordinates, cached by feature/parameter hash."""
     digest = hashlib.sha256(features.tobytes() + repr(sorted(UMAP_PARAMS.items())).encode())

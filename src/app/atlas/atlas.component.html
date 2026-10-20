@@ -15,20 +15,42 @@
     </p>
   </header>
 
-  <div class="toolbar" role="radiogroup" aria-label="Overlay">
-    @for (o of overlays; track o.id) {
+  <div class="toolbar">
+    <div class="chip-group" role="radiogroup" aria-label="Overlay">
+      @for (o of overlays; track o.id) {
+        <button
+          type="button"
+          role="radio"
+          class="chip"
+          [attr.aria-checked]="overlayId() === o.id"
+          [class.active]="overlayId() === o.id"
+          [id]="'overlay-' + o.id"
+          (click)="setOverlay(o.id)"
+        >
+          {{ o.label }}
+        </button>
+      }
+    </div>
+    <div class="chip-group" role="group" aria-label="Map layers">
       <button
         type="button"
-        role="radio"
-        class="chip"
-        [attr.aria-checked]="overlayId() === o.id"
-        [class.active]="overlayId() === o.id"
-        [id]="'overlay-' + o.id"
-        (click)="setOverlay(o.id)"
+        class="chip toggle"
+        id="toggle-contours"
+        [attr.aria-pressed]="showContours()"
+        (click)="showContours.set(!showContours())"
       >
-        {{ o.label }}
+        Contours
       </button>
-    }
+      <button
+        type="button"
+        class="chip toggle"
+        id="toggle-regions"
+        [attr.aria-pressed]="showRegions()"
+        (click)="showRegions.set(!showRegions())"
+      >
+        Region labels
+      </button>
+    </div>
   </div>
 
   <div class="layout">
@@ -123,6 +145,11 @@
             }
           </h2>
           <a [href]="d.url" target="_blank" rel="noopener noreferrer">{{ d.id }} ↗</a>
+          @if (canShowSimilar()) {
+            <button type="button" class="link-button" (click)="similarFor.set(selected())">
+              Show similar materials
+            </button>
+          }
           <dl>
             <dt>Category</dt>
             <dd>
@@ -161,6 +188,68 @@
           </dl>
         </div>
       }
+      @if (similarAnchor(); as anchor) {
+        <section class="similar" aria-labelledby="similar-title">
+          <div class="similar-head">
+            <h2 id="similar-title" class="side-title">Similar to {{ anchor.name }}</h2>
+            <button type="button" class="link-button" (click)="similarFor.set(null)">Close</button>
+          </div>
+          <p class="note">
+            Nearest {{ similarItems().length }} formulas by composition and properties (not map
+            distance). {{ similarWithElastic() }} have elastic data.
+          </p>
+          <div class="chip-group" role="radiogroup" aria-label="Sort similar materials">
+            <button
+              type="button"
+              role="radio"
+              class="chip small"
+              [class.active]="similarSort() === 'similarity'"
+              [attr.aria-checked]="similarSort() === 'similarity'"
+              (click)="similarSort.set('similarity')"
+            >
+              Most similar
+            </button>
+            <button
+              type="button"
+              role="radio"
+              class="chip small"
+              [class.active]="similarSort() === 'elastic'"
+              [attr.aria-checked]="similarSort() === 'elastic'"
+              (click)="similarSort.set('elastic')"
+            >
+              Elastic data first
+            </button>
+          </div>
+          <ol class="similar-list">
+            @for (item of similarItems(); track item.formula) {
+              <li>
+                <button
+                  type="button"
+                  class="similar-item"
+                  [class.current]="selected() === item.index"
+                  (click)="selected.set(item.index)"
+                >
+                  <i class="swatch" [style.background]="item.color" [title]="item.category"></i>
+                  <span class="similar-formula">{{ item.formula }}</span>
+                  @if (item.polymorphs > 1) {
+                    <span class="muted">×{{ item.polymorphs }}</span>
+                  }
+                  <span class="badge" [class.has]="item.withElastic">
+                    {{
+                      item.withElastic
+                        ? item.polymorphs > 1
+                          ? item.withElastic + ' elastic'
+                          : 'elastic'
+                        : 'no elastic'
+                    }}
+                  </span>
+                </button>
+              </li>
+            }
+          </ol>
+        </section>
+      }
+
       @if (atlas(); as a) {
         <h2 class="side-title">Construction anchors</h2>
         <ul class="anchor-list">

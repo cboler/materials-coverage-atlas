@@ -104,6 +104,16 @@ axis layout. One commit per phase, with tests for every rule change.
   test rows in-distribution, so the far bins have few rows; error rises only in the last bin.
 - Only the bin is shipped; predicted moduli are not written to the atlas.
 
+### Phase 7: shareable figure
+
+- `pipeline/figure.py` (matplotlib, light palette, 2400×1350 PNG + SVG) reads `atlas.json`,
+  groups each anchor's neighbors by formula exactly like the app, and builds the headline from
+  the counts. Rendered on every full build. Stamped with MP version, CC BY 4.0, and the atlas
+  build date (not today's date, so unchanged data gives an unchanged file).
+- Current headline: "Near iron, the base of steel, 8 of the 20 most similar compounds have
+  computed stiffness; near portlandite, the binder in cement, only 2 do." Subtitle: 5,929
+  structural candidates, 90% never calculated.
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
@@ -112,7 +122,7 @@ axis layout. One commit per phase, with tests for every rule change.
 - [x] **Phase 4**: electrode precision/recall against MP insertion electrodes.
 - [x] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
 - [x] **Phase 6**: extrapolation-distance overlay.
-- [ ] **Phase 7**: shareable figure.
+- [x] **Phase 7**: shareable figure.
 - [ ] **Phase 8**: property-profile axis layout, MP link check.
 
 ## 5. Verification Plan

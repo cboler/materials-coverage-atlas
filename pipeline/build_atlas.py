@@ -26,6 +26,7 @@ from electrodes import ELECTRODE_COLUMNS, electrode_validation
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
 from extrapolation import extrapolation
 from fetch import load_open_data, load_summary
+from figure import render
 from provenance import NEWER_TIER, TIER_EDGES, TIER_LABELS, entry_tier, legacy_number, novelty, tier_calibration
 from supply import supply_metrics
 
@@ -272,6 +273,9 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(atlas, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
     print(f"Wrote {out_path} ({out_path.stat().st_size / 1e6:.1f} MB, {len(df)} materials).")
+    if out_path == OUT_PATH:  # trial builds (--out) leave the published figure alone
+        figure = render(out_path)
+        print(f"Figure: {figure['headline']}")
 
 
 if __name__ == "__main__":

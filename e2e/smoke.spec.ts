@@ -49,6 +49,10 @@ test.describe('Responsive Shell Smoke Tests', () => {
       }
       await expect(page.locator('#multi-note')).toBeVisible();
       await expect(page.locator('#electrode-check')).toContainText('Recall');
+      const figure = await page.request.get(
+        (await page.locator('#share-figure a').first().getAttribute('href'))!,
+      );
+      expect(figure.headers()['content-type']).toContain('image/png');
 
       await page.locator('#overlay-entry').click();
       await expect(page.locator('#entry-summary')).toContainText('land in sparse areas');

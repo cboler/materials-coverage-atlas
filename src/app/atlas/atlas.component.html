@@ -149,6 +149,9 @@
                 @if (g.help) {
                   <span class="legend-help">{{ g.help }}</span>
                 }
+                @if (g.detail) {
+                  <span class="legend-help legend-detail">{{ g.detail }}</span>
+                }
               </span>
               <span class="legend-count">{{ g.indices.length | number }}</span>
             </button>
@@ -184,6 +187,17 @@
                 <span class="muted">(also {{ d.otherCategories.join(', ') }})</span>
               }
             </dd>
+            @if (d.structuralBasis) {
+              <dt [title]="terms.structural_basis.text">Structural basis</dt>
+              <dd>{{ d.structuralBasis }}</dd>
+            }
+            @if (d.structuralCandidate !== null) {
+              <dt [title]="terms.structural_candidate.text">Structural candidate</dt>
+              <dd>
+                {{ d.structuralCandidate ? 'Yes' : 'No' }}
+                <span class="muted">· composition rule, ignores stiffness</span>
+              </dd>
+            }
             <dt [title]="terms.theoretical.text">Origin</dt>
             <dd>{{ describe.origin(d.theoretical) }}</dd>
             <dt [title]="terms.band_gap.text">Band gap</dt>
@@ -321,11 +335,25 @@
     <section class="panel" aria-labelledby="coverage-title">
       <h2 id="coverage-title">Coverage by category</h2>
       <p class="note">
-        How much of each category comes with the data you would need to judge it. "Made in a lab" is
+        How much of each group comes with the data you would need to judge it. "Made in a lab" is
         the share confirmed by experiment, "Stiffness data" the share with computed elastic moduli,
         and "Cost data" the share where every element has a known price. Low numbers are gaps in the
         database, not facts about the materials.
       </p>
+      <p class="note">
+        Category rows count materials by their map color. Their stiffness shares compare fairly,
+        except for structural categories (marked †): the structural rule admits materials
+        <em>because</em> they have stiffness data, so a high share there is partly built in. The
+        <strong>Structural candidates</strong> row gives the fair structural number: materials
+        picked by a rule that never looks at stiffness (stable oxides and metals made of common
+        elements). It overlaps the category rows, so it is not part of the total.
+      </p>
+      @if (candidateSummary(); as cs) {
+        <p class="coverage-headline" id="candidate-summary">
+          {{ cs.count | number }} structural candidates;
+          <strong>{{ cs.neverPct | number: '1.0-1' }}%</strong> never had stiffness calculated.
+        </p>
+      }
       <div class="table-wrap">
         <table>
           <thead>
@@ -339,17 +367,39 @@
           </thead>
           <tbody>
             @for (row of coverage(); track row.key) {
-              <tr [class.total]="row.key === 'all'">
-                <th scope="row">{{ row.label }}</th>
+              <tr [class.total]="row.kind === 'all'" [class.candidates]="row.kind === 'candidates'">
+                <th scope="row">
+                  {{ row.label }}
+                  @if (row.verified !== undefined) {
+                    <span class="row-note">
+                      {{ row.verified | number }} verified by stiffness ·
+                      {{ row.inferred | number }} inferred
+                    </span>
+                  }
+                  @if (row.kind === 'candidates') {
+                    <span class="row-note">ignores stiffness; overlaps the rows above</span>
+                  }
+                </th>
                 <td>{{ row.count | number }}</td>
                 <td>{{ row.experimentalPct | number: '1.0-1' }}%</td>
-                <td>{{ row.elasticPct | number: '1.0-1' }}%</td>
+                <td>
+                  {{ row.elasticPct | number: '1.0-1' }}%
+                  @if (row.elasticBuiltIn) {
+                    <span class="dagger" title="Partly built in: not comparable with other rows"
+                      >†</span
+                    >
+                  }
+                </td>
                 <td>{{ row.costPct | number: '1.0-1' }}%</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+      <p class="note">
+        † Not comparable with other rows: verified structural entries are admitted for having
+        stiffness data, so this share partly measures the rule rather than the database.
+      </p>
     </section>
   }
 

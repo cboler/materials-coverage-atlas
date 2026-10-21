@@ -1,5 +1,6 @@
 import {
   buildGroups,
+  candidateCoverage,
   coverageRows,
   fmtNumber,
   materialDetail,
@@ -46,6 +47,46 @@ describe('coverageRows', () => {
       costPct: 100,
     });
   });
+
+  it('marks the structural stiffness share as built in and splits verified vs inferred', () => {
+    const atlas = structuredClone(FIXTURE);
+    atlas.columns.structural_inferred = [0, 0, 0, 0];
+    const rows = coverageRows(atlas);
+    expect(rows.find((r) => r.key === 'structural')).toMatchObject({
+      elasticBuiltIn: true,
+      verified: 1,
+      inferred: 0,
+    });
+    expect(rows.find((r) => r.key === 'energy')).toMatchObject({ elasticBuiltIn: false });
+    expect(rows.find((r) => r.key === 'energy')?.verified).toBeUndefined();
+  });
+
+  it('adds a moduli-blind structural-candidate row before the total when the flag exists', () => {
+    expect(coverageRows(FIXTURE).some((r) => r.kind === 'candidates')).toBe(false);
+    const atlas = structuredClone(FIXTURE);
+    // Corundum (has moduli) and the no-data entry are candidates; iron is not in this fixture.
+    atlas.columns.structural_candidate = [1, 0, 0, 1];
+    const rows = coverageRows(atlas);
+    expect(rows.at(-1)?.kind).toBe('all');
+    expect(rows.at(-2)).toMatchObject({
+      kind: 'candidates',
+      count: 2,
+      elasticPct: 50,
+      elasticBuiltIn: false,
+    });
+    expect(candidateCoverage(atlas)).toEqual({ count: 2, neverPct: 50 });
+    expect(candidateCoverage(FIXTURE)).toBeNull();
+  });
+});
+
+describe('category legend', () => {
+  it('shows how many structural entries are verified vs inferred', () => {
+    const atlas = structuredClone(FIXTURE);
+    atlas.columns.structural_inferred = [1, 0, 0, 0];
+    const structural = buildGroups(atlas, 'category').find((g) => g.key === 'structural');
+    expect(structural?.detail).toBe('0 verified by stiffness data · 1 inferred without it');
+    expect(buildGroups(atlas, 'category').find((g) => g.key === 'energy')?.detail).toBeUndefined();
+  });
 });
 
 describe('materialDetail', () => {
@@ -61,8 +102,35 @@ describe('materialDetail', () => {
   it('marks structural entries whose basis is composition, not elastic data', () => {
     const atlas = structuredClone(FIXTURE);
     expect(materialDetail(atlas, 0).category).toBe('Structural');
+    expect(materialDetail(atlas, 0).structuralBasis).toBe(
+      'Verified: stiffness data passes the structural rule',
+    );
     atlas.columns.structural_inferred = [1, 0, 0, 0];
-    expect(materialDetail(atlas, 0).category).toBe('Structural (inferred, no stiffness data)');
+    expect(materialDetail(atlas, 0).category).toBe(
+      'Structural (inferred, no usable stiffness data)',
+    );
+    // Corundum has moduli in the fixture, so an inferred basis means the fit was unphysical.
+    expect(materialDetail(atlas, 0).structuralBasis).toBe(
+      'Inferred from composition: stiffness calculation unphysical',
+    );
+    atlas.columns.k_vrh[0] = null;
+    expect(materialDetail(atlas, 0).structuralBasis).toBe(
+      'Inferred from composition: stiffness never calculated',
+    );
+  });
+
+  it('gives a structural basis for secondary structural membership and none otherwise', () => {
+    // Iron is magnetic first but also flagged structural.
+    expect(materialDetail(FIXTURE, 1).structuralBasis).toMatch(/^Verified/);
+    expect(materialDetail(FIXTURE, 2).structuralBasis).toBeNull();
+  });
+
+  it('reports structural candidacy only when the atlas carries the flag', () => {
+    expect(materialDetail(FIXTURE, 0).structuralCandidate).toBeNull();
+    const atlas = structuredClone(FIXTURE);
+    atlas.columns.structural_candidate = [1, 0, 0, 0];
+    expect(materialDetail(atlas, 0).structuralCandidate).toBe(true);
+    expect(materialDetail(atlas, 2).structuralCandidate).toBe(false);
   });
 });
 

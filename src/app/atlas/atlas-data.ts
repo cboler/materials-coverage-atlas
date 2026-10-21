@@ -24,8 +24,13 @@ export interface AtlasColumns {
   category: number[];
   /** Bitmask: bit i set = candidate for meta.categories[i]. */
   labels: number[];
-  /** 1 = structural by composition rule (no elastic data). Absent in atlas files built before it existed. */
+  /**
+   * 1 = structural by the candidate (composition) rule because there is no usable elastic data:
+   * none computed, or an unphysical fit. Absent in atlas files built before it existed.
+   */
   structural_inferred?: number[];
+  /** 1 = passes the moduli-blind structural-candidate rule. Absent in older atlas files. */
+  structural_candidate?: number[];
   theoretical: number[];
   band_gap: Maybe<number>[];
   formation_energy: Maybe<number>[];
@@ -67,6 +72,8 @@ export interface Group {
   indices: number[];
   /** Plain-language meaning, shown under the legend entry. */
   help?: string;
+  /** Extra breakdown shown under the help text (e.g. verified vs inferred structural). */
+  detail?: string;
 }
 
 export const OVERLAYS: Overlay[] = [
@@ -123,12 +130,19 @@ export function buildGroups(atlas: Atlas, overlay: OverlayId): Group[] {
   const n = c.id.length;
   switch (overlay) {
     case 'category':
-      return atlas.meta.categories.map((key, ci) => ({
-        key,
-        ...CATEGORY_STYLE[key],
-        help: CATEGORY_HELP[key],
-        indices: range(n).filter((i) => c.category[i] === ci),
-      }));
+      return atlas.meta.categories.map((key, ci) => {
+        const indices = range(n).filter((i) => c.category[i] === ci);
+        const split = isStructural(key) ? structuralSplit(atlas, indices) : null;
+        return {
+          key,
+          ...CATEGORY_STYLE[key],
+          help: CATEGORY_HELP[key],
+          detail: split
+            ? `${fmtCount(split.verified)} verified by stiffness data · ${fmtCount(split.inferred)} inferred without it`
+            : undefined,
+          indices,
+        };
+      });
     case 'experimental':
       return [
         group('experimental', 'Made in a lab', '#3987e5', n, (i) => c.theoretical[i] === 0),
@@ -172,6 +186,22 @@ function binGroups(values: Maybe<number>[], thresholds: number[], prefix: string
   return [...groups.reverse(), noData];
 }
 
+/** Structural categories ("structural", or its metallic/ceramic split). */
+export function isStructural(key: string): boolean {
+  return key.startsWith('structural');
+}
+
+/** How many structural entries rest on stiffness data (verified) vs the candidate rule (inferred). */
+export function structuralSplit(atlas: Atlas, indices: number[]) {
+  const inferredCol = atlas.columns.structural_inferred;
+  const inferred = inferredCol ? indices.filter((i) => inferredCol[i]).length : 0;
+  return { verified: indices.length - inferred, inferred };
+}
+
+function fmtCount(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
 function group(key: string, label: string, color: string, n: number, test: (i: number) => boolean) {
   return { key, label, color, indices: range(n).filter(test) };
 }
@@ -183,42 +213,86 @@ function range(n: number): number[] {
 export interface CoverageRow {
   key: string;
   label: string;
+  /**
+   * 'category': materials whose map color (primary category) is this one; rows sum to the total.
+   * 'candidates': the moduli-blind structural-candidate population, which overlaps the categories.
+   * 'all': every material.
+   */
+  kind: 'category' | 'candidates' | 'all';
   count: number;
   experimentalPct: number;
   elasticPct: number;
   costPct: number;
+  /** The category's own rule admits entries for having stiffness data, so elasticPct is partly built in. */
+  elasticBuiltIn: boolean;
+  /** Structural rows: entries admitted by stiffness data vs inferred by the candidate rule. */
+  verified?: number;
+  inferred?: number;
 }
 
-/** Per primary category: how much of it is experimentally observed / has elastic / cost data. */
+/**
+ * Per primary category: how much of it is experimentally observed / has elastic / cost data. When
+ * the atlas carries the structural-candidate flag, a row for that population comes before the
+ * total: it is defined without moduli, so its stiffness share compares fairly with other rows.
+ */
 export function coverageRows(atlas: Atlas): CoverageRow[] {
   const c = atlas.columns;
-  const tally = (key: string, label: string) => ({
+  const tally = (key: string, label: string, kind: CoverageRow['kind']) => ({
     key,
     label,
-    count: 0,
+    kind,
+    indices: [] as number[],
     experimental: 0,
     elastic: 0,
     cost: 0,
   });
-  const rows = atlas.meta.categories.map((key) => tally(key, categoryLabel(key)));
-  const total = tally('all', 'All materials');
+  const rows = atlas.meta.categories.map((key) => tally(key, categoryLabel(key), 'category'));
+  const candidates = tally('structural_candidate', 'Structural candidates', 'candidates');
+  const total = tally('all', 'All materials', 'all');
   c.category.forEach((ci, i) => {
-    for (const row of [rows[ci], total]) {
-      row.count++;
+    const targets = [rows[ci], total];
+    if (c.structural_candidate?.[i]) targets.push(candidates);
+    for (const row of targets) {
+      row.indices.push(i);
       if (c.theoretical[i] === 0) row.experimental++;
       if (c.k_vrh[i] !== null) row.elastic++;
       if (c.cost[i] !== null) row.cost++;
     }
   });
   const pct = (part: number, whole: number) => (whole ? (100 * part) / whole : 0);
-  return [...rows, total].map((r) => ({
-    key: r.key,
-    label: r.label,
-    count: r.count,
-    experimentalPct: pct(r.experimental, r.count),
-    elasticPct: pct(r.elastic, r.count),
-    costPct: pct(r.cost, r.count),
-  }));
+  const all = c.structural_candidate ? [...rows, candidates, total] : [...rows, total];
+  return all.map((r) => {
+    const builtIn = r.kind === 'category' && isStructural(r.key);
+    const count = r.indices.length;
+    return {
+      key: r.key,
+      label: r.label,
+      kind: r.kind,
+      count,
+      experimentalPct: pct(r.experimental, count),
+      elasticPct: pct(r.elastic, count),
+      costPct: pct(r.cost, count),
+      elasticBuiltIn: builtIn,
+      ...(builtIn ? structuralSplit(atlas, r.indices) : {}),
+    };
+  });
+}
+
+/**
+ * Size of the moduli-blind structural-candidate population and the share that never had stiffness
+ * calculated; null for atlas files without the flag.
+ */
+export function candidateCoverage(atlas: Atlas): { count: number; neverPct: number } | null {
+  const flags = atlas.columns.structural_candidate;
+  if (!flags) return null;
+  let count = 0;
+  let never = 0;
+  flags.forEach((f, i) => {
+    if (!f) return;
+    count++;
+    if (atlas.columns.k_vrh[i] === null) never++;
+  });
+  return { count, neverPct: count ? (100 * never) / count : 0 };
 }
 
 export interface MaterialDetail {
@@ -228,6 +302,10 @@ export interface MaterialDetail {
   category: string;
   color: string;
   otherCategories: string[];
+  /** Why the material counts as structural, or null when it doesn't. */
+  structuralBasis: Maybe<string>;
+  /** Passes the moduli-blind structural-candidate rule (null for atlas files without the flag). */
+  structuralCandidate: Maybe<boolean>;
   theoretical: boolean;
   bandGap: Maybe<number>;
   formationEnergy: Maybe<number>;
@@ -298,18 +376,32 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
   const c = atlas.columns;
   const categories = atlas.meta.categories;
   const primary = categories[c.category[i]];
+  const structuralBit = categories.findIndex(
+    (key, bit) => isStructural(key) && c.labels[i] & (1 << bit),
+  );
+  const inferred = !!c.structural_inferred?.[i];
+  const basis =
+    structuralBit === -1
+      ? null
+      : !inferred
+        ? 'Verified: stiffness data passes the structural rule'
+        : c.k_vrh[i] === null
+          ? 'Inferred from composition: stiffness never calculated'
+          : 'Inferred from composition: stiffness calculation unphysical';
   return {
     id: c.id[i],
     formula: c.formula[i],
     url: `https://next-gen.materialsproject.org/materials/${c.id[i]}`,
     category:
-      primary === 'structural' && c.structural_inferred?.[i]
-        ? 'Structural (inferred, no stiffness data)'
+      isStructural(primary) && inferred
+        ? `${categoryLabel(primary)} (inferred, no usable stiffness data)`
         : categoryLabel(primary),
     color: CATEGORY_STYLE[primary]?.color ?? NO_DATA_COLOR,
     otherCategories: categories
       .filter((key, bit) => key !== primary && c.labels[i] & (1 << bit))
       .map(categoryLabel),
+    structuralBasis: basis,
+    structuralCandidate: c.structural_candidate ? c.structural_candidate[i] === 1 : null,
     theoretical: c.theoretical[i] === 1,
     bandGap: c.band_gap[i],
     formationEnergy: c.formation_energy[i],

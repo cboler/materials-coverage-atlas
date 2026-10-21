@@ -80,12 +80,28 @@ export const TERMS = {
       'A rough guess at what the material could be useful for, from simple rules on its computed ' +
       'properties. It is a screening hint, not a verdict; see "Category rules" below.',
   },
+  structural_basis: {
+    label: 'Structural basis',
+    text:
+      'Why a material counts as structural. "Verified": its computed stiffness passes the rule. ' +
+      '"Inferred": it has no usable stiffness data (never calculated, or the calculation gave an ' +
+      'impossible value), so it was judged from its composition and stability instead.',
+  },
+  structural_candidate: {
+    label: 'Structural candidate',
+    text:
+      'Picked by a rule that never looks at stiffness: stable, made of common elements, and either ' +
+      'a wide-gap oxide mineral or a metal such as iron, aluminum or titanium. Because stiffness ' +
+      'plays no part, the share of candidates with stiffness data is a fair measure of coverage.',
+  },
 } satisfies Record<string, Term>;
 
 /** One-line, jargon-free meaning of each category (the technical rules are in the rules panel). */
 export const CATEGORY_HELP: Record<string, string> = {
   structural:
-    'Stiff enough to carry loads, or ("inferred") a stable, common-element mineral like those in cement and stone.',
+    'Stiff enough to carry loads ("verified" by stiffness data), or ("inferred", no usable stiffness data) a stable, common-element mineral or metal like those in cement, stone and steel.',
+  structural_candidate:
+    'The fair structural population: stable oxides and metals made of common elements, picked without looking at stiffness.',
   energy: 'Could store charge in a battery or absorb sunlight in a solar cell.',
   electronic_optical:
     'A semiconductor or transparent material: chips, LEDs, sensors, optical coatings.',

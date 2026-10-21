@@ -125,7 +125,13 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
     for category in CATEGORIES:
         print(f"  {category}: {(primary == category).sum()} primary")
     inferred = flags["structural_inferred"] & (primary == "structural")
-    print(f"  (structural by composition, no elastic data: {inferred.sum()})")
+    print(f"  (structural by composition, no usable elastic data: {inferred.sum()})")
+    candidates = flags["structural_candidate"]
+    never = candidates & df["k_vrh"].isna()
+    print(
+        f"  structural candidates (moduli-blind rule): {candidates.sum()}, "
+        f"{never.sum() / max(candidates.sum(), 1):.1%} never had stiffness calculated"
+    )
 
     print("Building features...")
     features = feature_matrix(df, compositions)
@@ -160,8 +166,10 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "y": quantized[:, 1].tolist(),
             "category": primary.map(CATEGORIES.index).tolist(),
             "labels": label_bits.tolist(),
-            # 1 = structural candidacy rests on composition (no elastic data), not measured moduli.
+            # 1 = structural candidacy rests on composition (no usable elastic data), not moduli.
             "structural_inferred": flags["structural_inferred"].astype(int).tolist(),
+            # 1 = passes the moduli-blind structural-candidate rule (the fair coverage population).
+            "structural_candidate": flags["structural_candidate"].astype(int).tolist(),
             "theoretical": df["theoretical"].fillna(True).astype(int).tolist(),
             "band_gap": _round(df["band_gap"], 2),
             "formation_energy": _round(df["formation_energy"], 3),

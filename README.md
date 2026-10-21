@@ -21,7 +21,9 @@ coverage is thin.
   range on any axis filters both the lines and the map, and "no data" / "unphysical" slots on
   each axis make coverage and data-quality gaps visible.
 - **Coverage table**: per category, the share of entries that are experimentally observed, have
-  elastic data, or have cost data.
+  elastic data, or have cost data. The structural rule admits entries for having elastic data,
+  so its stiffness share is marked as built in; a separate **structural candidates** row (a
+  moduli-blind rule: stable, earth-abundant oxides and metals) gives the comparable number.
 
 Built on [angular-pwa-starter](https://github.com/cboler/angular-pwa-starter): Angular 22, static
 hosting on GitHub Pages, installable PWA.
@@ -106,9 +108,12 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   magnetic rule therefore only counts metallic FM/FiM entries and insulating ferrimagnets;
   insulating "FM" results are treated as artifacts.
 - Elastic moduli exist for only a small fraction of entries. "Structural" is verified where
-  moduli exist, and inferred from composition otherwise (stable, wide-gap, oxygen-bearing,
-  earth-abundant). The detail card says which basis applies, and the elastic-coverage overlay
-  shows the gap.
+  physical moduli exist, and inferred otherwise from the structural-candidate rule (stable,
+  earth-abundant, and either a wide-gap oxide or a structural-metal alloy). Unphysical fits,
+  such as aluminum's negative shear modulus, count as no data. The legend, detail card and
+  coverage table show which basis applies. Because the verified path needs elastic data, the
+  structural category's stiffness share is partly built in; the structural-candidate row is the
+  comparable number.
 - The battery-electrode rule does not require a band gap, because several real electrodes
   (LiNiO₂, LiTiS₂) are metallic in GGA. It requires an anion framework, a meaningful working-ion
   fraction, and no spectator cations instead. It was checked against 19 known electrodes, but

@@ -32,6 +32,7 @@ import {
   OverlayId,
   SimilarSort,
   buildGroups,
+  candidateCoverage,
   categoryLabel,
   coverageRows,
   fmtNumber,
@@ -67,12 +68,18 @@ const HOVER_RADIUS = 10; // screen px; larger than the marks so small points are
 const RULE_ORDER = [
   'gate',
   'structural',
+  'structural_candidate',
   'energy',
   'electronic_optical',
   'magnetic',
   'unclassified',
   'priority',
 ];
+const RULE_LABELS: Record<string, string> = {
+  gate: 'All categories',
+  priority: 'Coloring',
+  structural_candidate: 'Structural candidates',
+};
 
 @Component({
   selector: 'app-atlas',
@@ -152,10 +159,15 @@ export class AtlasComponent implements OnDestroy {
     const atlas = this.atlas();
     return atlas ? coverageRows(atlas) : [];
   });
+  /** "X structural candidates; Y% never had stiffness calculated" (the moduli-blind population). */
+  protected readonly candidateSummary = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? candidateCoverage(atlas) : null;
+  });
   protected readonly rules = computed(() => {
     const rules = this.atlas()?.meta.rules ?? {};
     return RULE_ORDER.filter((k) => rules[k]).map((k) => ({
-      label: k === 'gate' ? 'All categories' : k === 'priority' ? 'Coloring' : categoryLabel(k),
+      label: RULE_LABELS[k] ?? categoryLabel(k),
       help: CATEGORY_HELP[k] ?? null,
       text: rules[k],
     }));

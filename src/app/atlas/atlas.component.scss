@@ -443,6 +443,35 @@ table {
     font-weight: 600;
     border-top: 1px solid var(--border-muted);
   }
+
+  // The moduli-blind candidate population overlaps the category rows, so it is set apart.
+  .candidates th,
+  .candidates td {
+    border-top: 1px dashed var(--border-muted);
+    background: var(--bg-surface);
+  }
+
+  .row-note {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    color: var(--text-muted);
+    white-space: normal;
+  }
+
+  .dagger {
+    color: var(--text-muted);
+    cursor: help;
+  }
+}
+
+.coverage-headline {
+  font-size: var(--font-size-sm);
+  margin: var(--space-2) 0 var(--space-3);
+
+  strong {
+    color: var(--text-primary);
+  }
 }
 
 .rules {

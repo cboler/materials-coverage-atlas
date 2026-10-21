@@ -75,7 +75,13 @@ Findings from the shipped data (MP v2026.09.28, 154,377 materials):
 - [x] Inferred-structural rule for stable, wide-gap, oxygen-bearing, earth-abundant compounds without elastic data (pattern 3). Gypsum, alite and belite become structural (inferred).
 - [x] Magnetic rule counts only metallic FM/FiM and insulating ferrimagnets (pattern 4). The magnetic category goes from 32,613 to 14,833.
 - [x] Narrow the battery-electrode rule. Once magnetic stopped outranking it, the old rule (any Li/Na/K/Mg/Zn + redox metal + gap > 0) put energy at 22,701, and it missed metallic electrodes such as LiNiO2 and LiTiS2. The new rule requires the working ion to be ≥ 5% of atoms, an O/F/S/P/Se/N framework, no Rb/Cs/Ca/Sr/Ba, and a hull distance ≤ 0.05 eV/atom, with any band gap. Battery matches go from 16,814 to 9,735, and it keeps all 19 reference electrodes checked (the old rule kept 15).
-- [ ] Regenerate `atlas.json` and review category counts and anchor assignments. Expected from a dry run on the cache: structural 10,494 (4,357 inferred), energy 16,871, electronic/optical 27,693, magnetic 14,833, unclassified 84,486.
+- [x] Regenerate `atlas.json` and review category counts and anchor assignments. Structural 10,494 (4,357 inferred), energy 16,871, electronic/optical 27,693, magnetic 14,833, unclassified 84,486.
+
+### Phase 4: Review fixes (2026-10-20)
+
+See `docs/exec-plans/completed/2026-10-20-review-fixes.md` for the numbers behind each step.
+
+- [x] **Non-circular structural coverage**: a moduli-blind structural-candidate rule (stable, earth-abundant, wide-gap oxide or structural-metal alloy). 6,595 candidates; 9.8% have stiffness data (90.2% never calculated), against 3.2–5.6% in the other categories. The structural row's 56.4% is marked as built in. Unphysical elastic fits (aluminum's G = −14 GPa) now count as "no usable data" and fall back to the candidate rule (+421 structural).
 
 ### Phase 3: Orientation and discovery
 

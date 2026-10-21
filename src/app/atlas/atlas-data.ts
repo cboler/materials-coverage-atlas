@@ -282,6 +282,13 @@ export function coverageRows(atlas: Atlas): CoverageRow[] {
   });
 }
 
+/** Materials that pass more than one category rule (only the first match colors the map). */
+export function multiCategoryCount(atlas: Atlas): number {
+  let n = 0;
+  for (const bits of atlas.columns.labels) if (bits & (bits - 1)) n++;
+  return n;
+}
+
 /**
  * Size of the moduli-blind structural-candidate population and the share that never had stiffness
  * calculated; null for atlas files without the flag.

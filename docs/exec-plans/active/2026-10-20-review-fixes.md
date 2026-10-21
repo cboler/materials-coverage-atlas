@@ -54,11 +54,21 @@ axis layout. One commit per phase, with tests for every rule change.
   that pair and step 200 against every other slot (CVD ΔE ≥ 19, normal ≥ 20); the only failing
   all-pairs pair is the pre-existing energy/magnetic orange–yellow.
 
+### Phase 3: coloring order
+
+- Chose reordering over a multi-category ring: 20,220 of 65,888 classified materials match
+  several rules, so rings would mark a third of the map. Only structural metals move ahead of
+  magnetic (ADR-010): 225 entries recolor (205 magnetic → metallic, 20 energy → metallic).
+  All-structural-first would recolor 1,430 (1,143 energy cathodes/absorbers → ceramic).
+- Anchors: iron and aluminum → structural metallic; calcite, gypsum, alite, belite, quartz,
+  corundum → structural ceramic; portlandite stays unclassified (soft measured moduli) but is
+  a structural candidate.
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
 - [x] **Phase 2**: metallic vs mineral/ceramic split, cost/abundance gate on the verified path.
-- [ ] **Phase 3**: coloring order / multi-membership.
+- [x] **Phase 3**: coloring order / multi-membership.
 - [ ] **Phase 4**: electrode precision/recall against MP insertion electrodes.
 - [ ] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
 - [ ] **Phase 6**: extrapolation-distance overlay.

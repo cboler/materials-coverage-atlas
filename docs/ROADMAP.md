@@ -83,6 +83,7 @@ See `docs/exec-plans/completed/2026-10-20-review-fixes.md` for the numbers behin
 
 - [x] **Non-circular structural coverage**: a moduli-blind structural-candidate rule (stable, earth-abundant, wide-gap oxide or structural-metal alloy). 6,595 candidates; 9.8% have stiffness data (90.2% never calculated), against 3.2–5.6% in the other categories. The structural row's 56.4% is marked as built in. Unphysical elastic fits (aluminum's G = −14 GPa) now count as "no usable data" and fall back to the candidate rule (+421 structural).
 - [x] **Structural means structural**: split into metallic/alloy and mineral/ceramic (metallic = band gap 0 and nonmetals < 50% of atoms), and a supply gate (cost ≤ $100/kg, every element ≥ 10 ppm) on both paths. The verified-path gate removes 5,084, the candidate cost cap 565, the alloy-composition test 31. Primary structural 10,915 → 5,744 (987 metallic, 4,757 ceramic); candidates 6,595 → 5,929 (90.3% never calculated).
+- [x] **Coloring order**: structural metals now rank ahead of magnetic (ADR-010), so iron and aluminum color as structural; 225 entries move (205 from magnetic, 20 from energy). The legend notes that 20,220 materials match several categories.
 
 ### Phase 3: Orientation and discovery
 

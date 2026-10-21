@@ -36,7 +36,7 @@ def classify(*rows):
 def test_each_rule_in_isolation():
     primary, _ = classify(
         material(k_vrh=200, g_vrh=150),  # stiff, no gap
-        material(elements=["Fe"], ordering="FM", magnetization=2.2),
+        material(elements=["Co"], ordering="FM", magnetization=1.6),  # not a base structural metal
         material(elements=["Co", "Li", "O"], band_gap=2.5, working_ion_fraction=0.25),  # cathode
         material(band_gap=1.4),  # PV window
         material(band_gap=2.5),  # semiconductor window
@@ -59,12 +59,23 @@ def test_hull_gate_blocks_everything():
 
 
 def test_priority_and_multi_label():
-    # Ferromagnet with elastic data: magnetic wins, structural still flagged.
+    # Iron: a stiff ferromagnetic metal is colored structural, and magnetic stays flagged.
     primary, flags = classify(
         material(elements=["Fe"], ordering="FM", magnetization=2.2, k_vrh=170, g_vrh=80)
     )
-    assert primary == ["magnetic"]
-    assert flags.iloc[0]["structural_metallic"]
+    assert primary == ["structural_metallic"]
+    assert flags.iloc[0]["magnetic"]
+
+
+def test_ceramics_rank_below_magnetic_and_energy():
+    primary, flags = classify(
+        # Insulating ferrimagnetic oxide (a ferrite): stays magnetic.
+        material(elements=["Fe", "O"], ordering="FiM", magnetization=4.0, band_gap=3.5),
+        # Wide-gap Li cathode (LiFePO4-like): stays energy, though it is an inferred ceramic.
+        material(elements=["Fe", "Li", "O", "P"], band_gap=3.7, working_ion_fraction=0.14),
+    )
+    assert primary == ["magnetic", "energy"]
+    assert flags["structural_ceramic"].tolist() == [True, True]
 
 
 def test_rejects_weak_or_unphysical_elastic_data_and_antiferromagnets():

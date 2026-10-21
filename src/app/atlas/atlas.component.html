@@ -162,6 +162,13 @@
         <button type="button" class="link-button" (click)="showAll()">Show all</button>
       }
       <p class="note">{{ overlayNote() }}</p>
+      @if (overlayId() === 'category' && multiCount()) {
+        <p class="note" id="multi-note">
+          {{ multiCount() | number }} materials match more than one category. Each dot takes the
+          color of its first match, with structural metals first, so iron and steel show as
+          structural rather than magnetic. Click a dot to see every category it matches.
+        </p>
+      }
 
       @if (selectedDetail(); as d) {
         <div class="detail" id="selected-detail">

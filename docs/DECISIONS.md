@@ -233,6 +233,27 @@ The map's islands were unlabeled, dense regions buried small groups, and there w
 
 ---
 
+## ADR-010: Coloring Order Puts Structural Metals First
+
+### Status
+
+Accepted
+
+### Context
+
+Each dot takes one color, the first matching rule in `PRIORITY`. With magnetic first, iron and steels (which pass both the structural and magnetic rules) were colored magnetic. Two fixes were considered: reorder the priority, or keep the order and draw a ring on multi-category dots. 20,220 of 65,888 classified materials match more than one rule, so rings would mark almost a third of the map and say nothing about which use matters.
+
+### Decision
+
+Reorder: structural metallic/alloy, magnetic, energy, structural mineral/ceramic, electronic/optical. Only structural metals move ahead. That recolors 225 entries (205 magnetic metals such as iron and Fe–Ni alloys, and 20 energy entries). Moving all structural first would recolor 1,430, including 1,143 battery cathodes and PV absorbers whose energy use is the better description; ferrites (ceramic and magnetic) stay magnetic.
+
+### Consequences
+
+- **Positive**: Iron and aluminum show as structural; the change is small and explainable.
+- **Trade-off**: Color still shows one category. The legend states how many materials match several, and the detail card lists every match from the `labels` bitmask.
+
+---
+
 ## Template for New Decisions (For Derivations)
 
 When recording a new architectural decision, copy and fill out the following template:

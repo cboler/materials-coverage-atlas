@@ -4,6 +4,7 @@ import {
   coverageRows,
   fmtNumber,
   materialDetail,
+  multiCategoryCount,
   similarMaterials,
 } from './atlas-data';
 import { FIXTURE } from './atlas-fixture';
@@ -114,6 +115,13 @@ describe('structural metallic/ceramic split', () => {
     expect(iron.category).toBe('Magnetic');
     expect(iron.otherCategories).toEqual(['Structural – metallic/alloy']);
     expect(iron.structuralBasis).toMatch(/^Verified/);
+  });
+});
+
+describe('multiCategoryCount', () => {
+  it('counts materials whose label bitmask has more than one bit', () => {
+    // Iron (structural + magnetic) and GaAs (energy + electronic) match two rules each.
+    expect(multiCategoryCount(FIXTURE)).toBe(2);
   });
 });
 

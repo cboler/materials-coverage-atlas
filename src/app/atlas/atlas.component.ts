@@ -37,6 +37,7 @@ import {
   coverageRows,
   fmtNumber,
   materialDetail,
+  multiCategoryCount,
   similarMaterials,
 } from './atlas-data';
 import {
@@ -159,6 +160,11 @@ export class AtlasComponent implements OnDestroy {
   protected readonly coverage = computed(() => {
     const atlas = this.atlas();
     return atlas ? coverageRows(atlas) : [];
+  });
+  /** Materials matching several category rules; the legend explains which one colors them. */
+  protected readonly multiCount = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? multiCategoryCount(atlas) : 0;
   });
   /** "X structural candidates; Y% never had stiffness calculated" (the moduli-blind population). */
   protected readonly candidateSummary = computed(() => {

@@ -89,8 +89,15 @@ electronic/optical
     Semiconductor to wide-gap insulator: SEMI_GAP_MIN (0.1 eV) <= band gap <= SEMI_GAP_MAX
     (4.0 eV), which spans infrared detectors through UV-transparent conductors and LEDs.
 
-Primary category priority: magnetic, energy, structural, electronic/optical. The narrowest,
-most chemistry-specific rules win; electronic/optical is the broadest window, so it goes last.
+Primary category priority: structural metallic/alloy, magnetic, energy, structural
+mineral/ceramic, electronic/optical. Electronic/optical is the broadest window, so it goes last.
+Structural metals come first so iron, steels and nickel alloys, which also pass the magnetic
+rule, are colored by their main use; this moves 205 entries from magnetic and 20 from energy.
+Ceramics stay below magnetic and energy: their overlaps are ferrites (genuine magnets) and
+battery cathodes such as LiFePO4 (stable wide-gap oxides), where the narrower rule describes
+the use better. Moving all structural first would have recolored 1,143 energy entries.
+Multi-membership is never lost: the ``labels`` bitmask keeps every match and the detail card
+lists them.
 """
 
 from __future__ import annotations
@@ -105,7 +112,7 @@ CATEGORIES = [
     "magnetic",
     "unclassified",
 ]
-PRIORITY = ["magnetic", "energy", "structural_metallic", "structural_ceramic", "electronic_optical"]
+PRIORITY = ["structural_metallic", "magnetic", "energy", "structural_ceramic", "electronic_optical"]
 
 MAX_E_HULL = 0.1  # eV/atom
 MIN_SHEAR, MAX_SHEAR, MAX_BULK = 25.0, 600.0, 500.0  # GPa
@@ -165,8 +172,9 @@ RULES = {
     "electronic_optical": f"Band gap {SEMI_GAP_MIN}–{SEMI_GAP_MAX} eV (semiconductor to wide-gap).",
     "unclassified": "Matches no rule above (or fails the energy-above-hull gate).",
     "priority": (
-        "Primary category = first match in: magnetic, energy, structural (metallic, then "
-        "mineral/ceramic), electronic/optical."
+        "Primary category = first match in: structural metallic/alloy, magnetic, energy, "
+        "structural mineral/ceramic, electronic/optical. Every other match is kept and listed "
+        "in the detail card."
     ),
 }
 

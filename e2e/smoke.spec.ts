@@ -40,6 +40,15 @@ test.describe('Responsive Shell Smoke Tests', () => {
       await expect(page.locator('svg.overlay-layer g.contours path').first()).toBeAttached();
       await expect(page.locator('app-parallel-coordinates g.pc-axis')).toHaveCount(9);
 
+      // Iron and aluminum color as structural metals (iron is also magnetic: listed, not colored).
+      for (const name of ['Iron', 'Aluminum']) {
+        await page.locator('.anchor-list button', { hasText: name }).click();
+        await expect(page.locator('#selected-detail dd').first()).toContainText(
+          'Structural – metallic/alloy',
+        );
+      }
+      await expect(page.locator('#multi-note')).toBeVisible();
+
       // 4. Overlay switching updates the legend
       await page.locator('#overlay-elastic').click();
       await expect(page.locator('.legend-label').first()).toHaveText('Stiffness computed');

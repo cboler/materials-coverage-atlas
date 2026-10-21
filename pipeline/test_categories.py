@@ -2,7 +2,7 @@ import math
 
 import pandas as pd
 
-from categories import assign_categories
+from categories import NONMETALS, assign_categories
 
 NAN = math.nan
 
@@ -17,9 +17,15 @@ def material(**overrides):
         "ordering": "NM",
         "magnetization": 0.0,
         "min_abundance": 1000.0,
+        "cost": 1.0,
         "working_ion_fraction": 0.0,
     }
-    return {**base, **overrides}
+    row = {**base, **overrides}
+    # Equal-share approximation of the atomic nonmetal fraction unless a test sets it.
+    row.setdefault(
+        "nonmetal_fraction", sum(e in NONMETALS for e in row["elements"]) / len(row["elements"])
+    )
+    return row
 
 
 def classify(*rows):
@@ -37,7 +43,7 @@ def test_each_rule_in_isolation():
         material(),  # metal, no data
     )
     assert primary == [
-        "structural",
+        "structural_ceramic",
         "magnetic",
         "energy",
         "energy",
@@ -58,7 +64,7 @@ def test_priority_and_multi_label():
         material(elements=["Fe"], ordering="FM", magnetization=2.2, k_vrh=170, g_vrh=80)
     )
     assert primary == ["magnetic"]
-    assert flags.iloc[0]["structural"]
+    assert flags.iloc[0]["structural_metallic"]
 
 
 def test_rejects_weak_or_unphysical_elastic_data_and_antiferromagnets():
@@ -74,11 +80,11 @@ def test_rejects_weak_or_unphysical_elastic_data_and_antiferromagnets():
 
 def test_inferred_structural_for_stable_abundant_oxide_insulators():
     primary, flags = classify(material(band_gap=5.0))  # e.g. a silicate or carbonate
-    assert primary == ["structural"]
+    assert primary == ["structural_ceramic"]
     assert flags.iloc[0]["structural_inferred"]
 
     verified, vflags = classify(material(band_gap=5.0, k_vrh=200, g_vrh=150))
-    assert verified == ["structural"]
+    assert verified == ["structural_ceramic"]
     assert not vflags.iloc[0]["structural_inferred"]
 
 
@@ -131,7 +137,7 @@ def test_structural_candidate_ignores_moduli():
 def test_structural_candidate_metallic_branch():
     _, flags = classify(
         material(elements=["Fe"], min_abundance=56300),  # iron
-        material(elements=["C", "Fe"], min_abundance=200),  # steel-like carbide/alloy
+        material(elements=["C", "Fe"], min_abundance=200, nonmetal_fraction=0.25),  # Fe3C
         material(elements=["Al", "Mg"], min_abundance=23300),  # Al-Mg alloy
         material(elements=["Fe", "Pt"], min_abundance=0.005),  # Pt is not a structural metal
         material(elements=["Al", "Li"], min_abundance=20),  # Li is not in the alloy list
@@ -146,8 +152,54 @@ def test_structural_candidate_metallic_branch():
 def test_unphysical_elastic_fit_falls_back_to_candidate_rule():
     # Aluminum (mp-134) reports G_VRH = -14 GPa; it used to end up unclassified.
     primary, flags = classify(material(elements=["Al"], min_abundance=82300, k_vrh=77, g_vrh=-14))
-    assert primary == ["structural"]
+    assert primary == ["structural_metallic"]
     assert flags.iloc[0]["structural_inferred"]
     # A physical but soft fit still blocks inference (portlandite-like).
     primary, _ = classify(material(band_gap=5.0, k_vrh=36, g_vrh=21))
     assert primary == ["unclassified"]
+
+
+def test_supply_gate_on_verified_path():
+    stiff = {"k_vrh": 200, "g_vrh": 150, "band_gap": 1.0}  # stiff semiconductor, no inference
+    _, flags = classify(
+        material(**stiff),
+        material(**stiff, cost=3000.0),  # precious-metal intermetallic: too expensive
+        material(**stiff, min_abundance=0.005),  # Pt/Ru/Rh-scarce
+        material(**stiff, cost=math.nan),  # price unknown
+        material(**stiff, min_abundance=math.nan),  # abundance unknown
+    )
+    assert flags["structural_ceramic"].tolist() == [True, False, False, False, False]
+
+
+def test_supply_gate_on_candidate_rule():
+    _, flags = classify(
+        material(band_gap=5.0),
+        material(band_gap=5.0, cost=500.0),  # e.g. a scandium silicate
+    )
+    assert flags["structural_candidate"].tolist() == [True, False]
+
+
+def test_metallic_vs_ceramic_split():
+    stiff = {"k_vrh": 200, "g_vrh": 100}
+    primary, flags = classify(
+        material(elements=["Fe"], **stiff),  # iron
+        material(elements=["C", "Fe"], nonmetal_fraction=0.25, **stiff),  # cementite Fe3C
+        material(elements=["C", "Ti"], nonmetal_fraction=0.5, **stiff),  # TiC: half carbon
+        material(elements=["Al", "O"], band_gap=6.0, **stiff),  # corundum
+        material(elements=["Ru", "O"], cost=50.0, **stiff),  # metallic oxide, mostly O atoms
+    )
+    assert primary == [
+        "structural_metallic",
+        "structural_metallic",
+        "structural_ceramic",
+        "structural_ceramic",
+        "structural_ceramic",
+    ]
+    # The two flags are exclusive.
+    assert not (flags["structural_metallic"] & flags["structural_ceramic"]).any()
+
+
+def test_candidate_metallic_branch_needs_metallic_composition():
+    # TiN is metallic in DFT but half nitrogen: not a candidate alloy (and not a wide-gap oxide).
+    _, flags = classify(material(elements=["N", "Ti"], nonmetal_fraction=0.5, min_abundance=19))
+    assert not flags.iloc[0]["structural_candidate"]

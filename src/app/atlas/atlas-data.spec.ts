@@ -79,6 +79,44 @@ describe('coverageRows', () => {
   });
 });
 
+describe('structural metallic/ceramic split', () => {
+  // Corundum becomes ceramic and iron metallic: categories gain one slot, so indices shift by one.
+  const atlas = structuredClone(FIXTURE);
+  atlas.meta.categories = [
+    'structural_metallic',
+    'structural_ceramic',
+    'energy',
+    'electronic_optical',
+    'magnetic',
+    'unclassified',
+  ];
+  atlas.columns.category = [1, 4, 2, 5];
+  atlas.columns.labels = [0b00010, 0b10001, 0b01100, 0];
+  atlas.columns.structural_inferred = [0, 0, 0, 0];
+
+  it('labels, colors and explains both structural kinds', () => {
+    const groups = buildGroups(atlas, 'category');
+    expect(groups.slice(0, 2).map((g) => g.label)).toEqual([
+      'Structural – metallic/alloy',
+      'Structural – mineral/ceramic',
+    ]);
+    expect(groups[0].color).not.toBe(groups[1].color);
+    expect(groups.slice(0, 2).every((g) => g.help && g.detail)).toBe(true);
+  });
+
+  it('marks both structural rows as built in and gives secondary membership a basis', () => {
+    const rows = coverageRows(atlas);
+    expect(rows.filter((r) => r.elasticBuiltIn).map((r) => r.key)).toEqual([
+      'structural_metallic',
+      'structural_ceramic',
+    ]);
+    const iron = materialDetail(atlas, 1);
+    expect(iron.category).toBe('Magnetic');
+    expect(iron.otherCategories).toEqual(['Structural – metallic/alloy']);
+    expect(iron.structuralBasis).toMatch(/^Verified/);
+  });
+});
+
 describe('category legend', () => {
   it('shows how many structural entries are verified vs inferred', () => {
     const atlas = structuredClone(FIXTURE);

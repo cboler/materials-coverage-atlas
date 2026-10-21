@@ -100,6 +100,10 @@ export const TERMS = {
 export const CATEGORY_HELP: Record<string, string> = {
   structural:
     'Stiff enough to carry loads ("verified" by stiffness data), or ("inferred", no usable stiffness data) a stable, common-element mineral or metal like those in cement, stone and steel.',
+  structural_metallic:
+    'Metals and alloys (steel, aluminum, titanium, copper and their relatives) that are stiff enough to carry loads ("verified" by stiffness data) or, with no usable stiffness data, look like common structural alloys ("inferred"). All cost ≤ $100/kg and use common elements.',
+  structural_ceramic:
+    'Minerals and ceramics (oxides, silicates, carbonates, carbides) that are stiff enough to carry loads ("verified") or, with no usable stiffness data, are stable common-element oxides like those in cement and stone ("inferred"). All cost ≤ $100/kg and use common elements.',
   structural_candidate:
     'The fair structural population: stable oxides and metals made of common elements, picked without looking at stiffness.',
   energy: 'Could store charge in a battery or absorb sunlight in a solar cell.',

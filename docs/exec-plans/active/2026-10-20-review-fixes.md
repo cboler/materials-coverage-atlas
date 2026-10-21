@@ -33,10 +33,31 @@ axis layout. One commit per phase, with tests for every rule change.
   Primary-category stiffness shares: electronic/optical 3.2%, energy 4.7%, magnetic 3.4%,
   unclassified 5.6%, all 8.4%; structural 56.4% (built in, marked †).
 
+### Phase 2: structural means structural
+
+- Supply gate on both structural paths: element cost ≤ $100/kg and every element ≥ 10 ppm
+  (unknown fails). Split: metallic/alloy = band gap 0 and nonmetals < 50% of atoms; else
+  mineral/ceramic. Candidate alloys must also have a metallic composition.
+- Movement, applied in order (flagged structural / candidates):
+  - A. supply gate on the verified path: −5,084 / 0 (verified 6,886 → 1,802; removed entries
+    are mostly rare-earth and precious-metal intermetallics such as Si3Ru4, YTaRu2, Pd17Se15)
+  - B. cost cap on the candidate rule: −565 / −611
+  - C. metallic composition for candidate alloys: −31 / −55
+- Primary: structural 10,915 → 5,744 (metallic 987, ceramic 4,757); 4,422 go to unclassified
+  and 749 to electronic/optical. Flagged: metallic 1,212 (712 verified, 500 inferred), ceramic
+  5,962 (1,090 verified, 4,872 inferred). Candidates 5,929, 90.3% never calculated.
+- Casualties of one documented threshold: W and Mo (≈1.2 ppm) fail the floor, so WC is
+  unclassified; magnesium misses the 25 GPa shear cut (24.4 GPa in MP).
+- Measured but not applied: Pugh's ratio (K/G ≥ 1.75) would remove 497 of 1,108 gated metallic
+  entries, including a copper polymorph and MAX phases.
+- Colors: metallic `#3987e5` (slot 1), ceramic `#9ec5f4` (blue step 200). The validator passes
+  that pair and step 200 against every other slot (CVD ΔE ≥ 19, normal ≥ 20); the only failing
+  all-pairs pair is the pre-existing energy/magnetic orange–yellow.
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
-- [ ] **Phase 2**: metallic vs mineral/ceramic split, cost/abundance gate on the verified path.
+- [x] **Phase 2**: metallic vs mineral/ceramic split, cost/abundance gate on the verified path.
 - [ ] **Phase 3**: coloring order / multi-membership.
 - [ ] **Phase 4**: electrode precision/recall against MP insertion electrodes.
 - [ ] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).

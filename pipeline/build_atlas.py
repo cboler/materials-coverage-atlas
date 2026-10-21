@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
 
-from categories import CATEGORIES, RULES, WORKING_IONS, assign_categories
+from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_categories
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
 from fetch import load_summary
 from supply import supply_metrics
@@ -79,6 +79,11 @@ def resolve_anchors(df: pd.DataFrame) -> list[dict]:
     return resolved
 
 
+def atomic_fraction(composition: Composition, symbols: set[str]) -> float:
+    """Share of the formula's atoms that are one of ``symbols``."""
+    return sum(composition.get_atomic_fraction(el) for el in composition.elements if el.symbol in symbols)
+
+
 def _round(values, digits: int) -> list:
     return [None if v is None or (isinstance(v, float) and math.isnan(v)) else round(float(v), digits) for v in values]
 
@@ -115,16 +120,15 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
     print("Computing supply metrics...")
     cost, abundance, scarcest = zip(*(supply_metrics(c) for c in compositions))
     df["min_abundance"] = pd.to_numeric(pd.Series(abundance, index=df.index), errors="coerce")
-    df["working_ion_fraction"] = [
-        sum(c.get_atomic_fraction(el) for el in c.elements if el.symbol in WORKING_IONS)
-        for c in compositions
-    ]
+    df["cost"] = pd.to_numeric(pd.Series(cost, index=df.index), errors="coerce")
+    df["working_ion_fraction"] = [atomic_fraction(c, WORKING_IONS) for c in compositions]
+    df["nonmetal_fraction"] = [atomic_fraction(c, NONMETALS) for c in compositions]
 
     print("Applying category rules...")
     primary, flags = assign_categories(df)
     for category in CATEGORIES:
         print(f"  {category}: {(primary == category).sum()} primary")
-    inferred = flags["structural_inferred"] & (primary == "structural")
+    inferred = flags["structural_inferred"] & primary.str.startswith("structural")
     print(f"  (structural by composition, no usable elastic data: {inferred.sum()})")
     candidates = flags["structural_candidate"]
     never = candidates & df["k_vrh"].isna()

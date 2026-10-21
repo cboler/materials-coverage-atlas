@@ -104,9 +104,13 @@ export const OVERLAYS: Overlay[] = [
   },
 ];
 
-// Categorical slots 1-4 of the validated dark palette; unclassified is a recessive neutral.
+// Categorical slots 1-4 of the validated dark palette; unclassified is a recessive neutral. The two
+// structural kinds share the blue family: slot 1 for metals, blue step 200 for minerals/ceramics.
+// That pair, and step 200 against every other slot, clears the CVD and normal-vision checks.
 export const CATEGORY_STYLE: Record<string, { label: string; color: string }> = {
-  structural: { label: 'Structural', color: '#3987e5' },
+  structural: { label: 'Structural', color: '#3987e5' }, // atlas files from before the split
+  structural_metallic: { label: 'Structural – metallic/alloy', color: '#3987e5' },
+  structural_ceramic: { label: 'Structural – mineral/ceramic', color: '#9ec5f4' },
   energy: { label: 'Energy', color: '#d95926' },
   electronic_optical: { label: 'Electronic / optical', color: '#199e70' },
   magnetic: { label: 'Magnetic', color: '#c98500' },

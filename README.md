@@ -5,7 +5,8 @@ Every material is placed on a 2D map by UMAP over composition and property featu
 a rule-based candidate category, and can be re-colored by overlays that show where the database's
 coverage is thin.
 
-- **Categories**: structural, energy, electronic/optical, magnetic, unclassified. The rules are
+- **Categories**: structural (metallic/alloy and mineral/ceramic), energy, electronic/optical,
+  magnetic, unclassified. The rules are
   documented in [`pipeline/categories.py`](pipeline/categories.py) and shown in the app.
 - **Overlays**: element abundance, element cost, experimental vs. theoretical, and elastic-data
   coverage (which entries lack bulk/shear moduli).
@@ -114,6 +115,10 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   coverage table show which basis applies. Because the verified path needs elastic data, the
   structural category's stiffness share is partly built in; the structural-candidate row is the
   comparable number.
+- Both structural paths require element cost ≤ $100/kg and every element ≥ 10 ppm in Earth's
+  crust; without that gate the stiffness path was dominated by rare-earth and precious-metal
+  intermetallics. The same floor excludes W and Mo (about 1.2 ppm), so tungsten carbide is not
+  structural here. Magnesium misses the 25 GPa shear cut (24.4 GPa in MP).
 - The battery-electrode rule does not require a band gap, because several real electrodes
   (LiNiO₂, LiTiS₂) are metallic in GGA. It requires an anion framework, a meaningful working-ion
   fraction, and no spectator cations instead. It was checked against 19 known electrodes, but

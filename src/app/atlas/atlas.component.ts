@@ -79,6 +79,7 @@ const RULE_LABELS: Record<string, string> = {
   gate: 'All categories',
   priority: 'Coloring',
   structural_candidate: 'Structural candidates',
+  structural: 'Structural (both kinds)',
 };
 
 @Component({

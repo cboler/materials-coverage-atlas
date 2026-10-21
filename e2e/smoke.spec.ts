@@ -47,6 +47,7 @@ test.describe('Responsive Shell Smoke Tests', () => {
           'Structural – metallic/alloy',
         );
       }
+      await expect(page.locator('#selected-detail .legacy-id')).toContainText('formerly mp-134');
       await expect(page.locator('#multi-note')).toBeVisible();
       await expect(page.locator('#electrode-check')).toContainText('Recall');
       const figure = await page.request.get(

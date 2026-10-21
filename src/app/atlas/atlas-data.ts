@@ -231,6 +231,16 @@ export function categoryLabel(key: string): string {
   return CATEGORY_STYLE[key]?.label ?? key;
 }
 
+/** Compact category names for tight spaces (axis levels); falls back to the full label. */
+const CATEGORY_SHORT: Record<string, string> = {
+  structural_metallic: 'Structural metal',
+  structural_ceramic: 'Structural ceramic',
+};
+
+export function categoryShortLabel(key: string): string {
+  return CATEGORY_SHORT[key] ?? categoryLabel(key);
+}
+
 /** Group material indices for the chosen overlay. Legend order = array order. */
 export function buildGroups(atlas: Atlas, overlay: OverlayId): Group[] {
   const c = atlas.columns;
@@ -466,6 +476,8 @@ export function candidateCoverage(atlas: Atlas): { count: number; neverPct: numb
 
 export interface MaterialDetail {
   id: string;
+  /** The older numeric ID ("mp-13") when ``id`` uses the current letter format, else null. */
+  legacyId: Maybe<string>;
   formula: string;
   url: string;
   category: string;
@@ -559,6 +571,7 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
           : 'Inferred from composition: stiffness calculation unphysical';
   return {
     id: c.id[i],
+    legacyId: legacyMaterialId(c.id[i]),
     formula: c.formula[i],
     url: `https://next-gen.materialsproject.org/materials/${c.id[i]}`,
     category:
@@ -583,6 +596,18 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
     scarcest: c.scarcest[i],
     anchor: atlas.anchors.find((a) => a.index === i)?.name ?? null,
   };
+}
+
+/**
+ * Materials Project's current IDs ("mp-aaaaaaan") write the old numeric IDs ("mp-13") in base 26
+ * with a = 0. Returns the old form, or null when the ID is already numeric or not in that format.
+ */
+export function legacyMaterialId(id: string): Maybe<string> {
+  const match = /^([a-z]+)-([a-z]+)$/.exec(id);
+  if (!match) return null;
+  let n = 0;
+  for (const ch of match[2]) n = n * 26 + (ch.charCodeAt(0) - 97);
+  return `${match[1]}-${n}`;
 }
 
 /** Compact number: 3 significant figures, k/M suffixes, exponent form outside 1e-3..1e9. */

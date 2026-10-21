@@ -6,6 +6,7 @@ import {
   candidateCoverage,
   coverageRows,
   fmtNumber,
+  legacyMaterialId,
   materialDetail,
   multiCategoryCount,
   similarMaterials,
@@ -272,6 +273,25 @@ describe('materialDetail', () => {
     atlas.columns.structural_candidate = [1, 0, 0, 0];
     expect(materialDetail(atlas, 0).structuralCandidate).toBe(true);
     expect(materialDetail(atlas, 2).structuralCandidate).toBe(false);
+  });
+});
+
+describe('legacyMaterialId', () => {
+  it('decodes current letter IDs to the old numeric ones', () => {
+    expect(legacyMaterialId('mp-aaaaaaan')).toBe('mp-13'); // iron
+    expect(legacyMaterialId('mp-aaaaafwb')).toBe('mp-3953'); // calcite
+    expect(legacyMaterialId('mp-aaaabjil')).toBe('mp-23879'); // portlandite
+    expect(legacyMaterialId('mp-13')).toBeNull();
+    expect(legacyMaterialId('not an id')).toBeNull();
+  });
+
+  it('shows the old ID next to the current one in the detail card', () => {
+    const atlas = structuredClone(FIXTURE);
+    atlas.columns.id[1] = 'mp-aaaaaaan';
+    const iron = materialDetail(atlas, 1);
+    expect(iron.legacyId).toBe('mp-13');
+    expect(iron.url).toBe('https://next-gen.materialsproject.org/materials/mp-aaaaaaan');
+    expect(materialDetail(FIXTURE, 1).legacyId).toBeNull();
   });
 });
 

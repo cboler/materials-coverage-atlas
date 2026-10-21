@@ -43,7 +43,7 @@
   }
 }
 
-// The plot keeps a readable minimum width and scrolls inside its own box on phones.
+// layout() widens the plot when its labels need more room; it then scrolls inside this box.
 .pc-scroll {
   overflow-x: auto;
   background: var(--bg-surface);
@@ -53,7 +53,6 @@
 
 .pc-plot {
   position: relative;
-  min-width: 760px;
   height: 420px;
 
   canvas,
@@ -105,7 +104,7 @@
   .pc-level {
     fill: var(--text-primary);
     font-size: 11px;
-    text-anchor: start;
+    stroke-width: 4px;
   }
 
   .brush .selection {

@@ -17,16 +17,23 @@ import { Atlas, Group } from './atlas-data';
 import { TERMS } from './explain';
 import {
   AxisBrush,
+  AxisExtent,
   MISSING_T,
   ParallelAxis,
   T_MAX,
   T_MIN,
   UNPHYSICAL_T,
+  axisPositions,
   buildAxes,
   filterMask,
 } from './parallel-data';
 
-const MARGIN = { top: 44, right: 64, bottom: 10, left: 56 };
+const MARGIN = { top: 44, bottom: 10 };
+/** Minimum px between a label and the plot edge, and between neighboring axes' labels. */
+const EDGE = 4;
+const AXIS_GAP = 10;
+/** Half-width of a brush track: neighbors must not overlap it either. */
+const BRUSH_HALF = 12;
 // Canvas cost grows with lines x axes; past these caps lines are a random sample (disclosed in the UI).
 const LINE_CAP = 12000;
 const CONTEXT_CAP = 4000;
@@ -46,6 +53,7 @@ export class ParallelCoordinatesComponent implements OnDestroy {
   /** Emits the brushed-material mask (1 = matches), or null when no axis is brushed. */
   readonly filterChange = output<Uint8Array | null>();
 
+  private readonly scrollRef = viewChild.required<ElementRef<HTMLDivElement>>('scroll');
   private readonly plotRef = viewChild.required<ElementRef<HTMLDivElement>>('plot');
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly svgRef = viewChild.required<ElementRef<SVGSVGElement>>('svg');
@@ -72,6 +80,8 @@ export class ParallelCoordinatesComponent implements OnDestroy {
 
   private ctx: CanvasRenderingContext2D | null = null;
   private size = { width: 0, height: 0, dpr: 1, axisH: 0 };
+  /** Axis x positions in px, laid out from the measured label widths. */
+  private xs: number[] = [];
   private brushBehaviors = new Map<string, BrushBehavior<unknown>>();
   private frame = 0;
   private resizeObserver?: ResizeObserver;
@@ -80,7 +90,8 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     afterNextRender(() => {
       this.ctx = this.canvasRef().nativeElement.getContext('2d');
       this.resizeObserver = new ResizeObserver(() => this.layout());
-      this.resizeObserver.observe(this.plotRef().nativeElement);
+      // The plot's own width is set by layout(), so watch the scroll container instead.
+      this.resizeObserver.observe(this.scrollRef().nativeElement);
       this.layout();
     });
     effect(() => {
@@ -108,11 +119,6 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     this.filterChange.emit(this.mask());
   }
 
-  private x(k: number): number {
-    const span = this.size.width - MARGIN.left - MARGIN.right;
-    return MARGIN.left + (k * span) / (this.axes().length - 1);
-  }
-
   private y(t: number): number {
     return MARGIN.top + (T_MAX - t) * this.size.axisH;
   }
@@ -121,55 +127,75 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     return T_MAX - (y - MARGIN.top) / this.size.axisH;
   }
 
-  /** Size the canvas and rebuild axes, ticks and brushes for the current width. */
+  /**
+   * Rebuild axes for the current width: draw every axis's labels, measure them, then place the
+   * axes so no label overlaps a neighbor or the edges. If the labels need more room than the
+   * container has, the plot grows wider and scrolls inside its container.
+   */
   private layout(): void {
     const plot = this.plotRef().nativeElement;
     const canvas = this.canvasRef().nativeElement;
-    const width = plot.clientWidth;
+    const available = this.scrollRef().nativeElement.clientWidth;
     const height = plot.clientHeight;
-    if (!width || !height) return;
+    if (!available || !height) return;
     const dpr = window.devicePixelRatio || 1;
     // The axis plus both slots must fit: the t range [T_MIN, T_MAX] spans the plot height.
     const axisH = (height - MARGIN.top - MARGIN.bottom) / (T_MAX - T_MIN);
-    this.size = { width, height, dpr, axisH };
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    this.size = { ...this.size, height, dpr, axisH };
 
     const svg = select(this.svgRef().nativeElement);
     svg.selectAll('*').remove();
     this.brushBehaviors.clear();
-    this.axes().forEach((axis, k) => this.renderAxis(svg.append('g'), axis, this.x(k)));
+    const drawn = this.axes().map((axis) => {
+      const g = svg.append('g').attr('class', 'pc-axis');
+      return { axis, g, extent: this.renderLabels(g, axis) };
+    });
+    const { xs, width } = axisPositions(
+      drawn.map((d) => d.extent),
+      available,
+      EDGE,
+      AXIS_GAP,
+    );
+    this.xs = xs;
+    this.size.width = width;
+    plot.style.width = `${width}px`;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    drawn.forEach(({ axis, g }, k) => {
+      g.attr('transform', `translate(${xs[k]},0)`);
+      this.addBrush(g, axis);
+    });
     this.scheduleDraw();
   }
 
-  private renderAxis(
+  /** Draw an axis's title, line, ticks and slots at x = 0 and measure how far they reach. */
+  private renderLabels(
     g: Selection<SVGGElement, unknown, null, undefined>,
     axis: ParallelAxis,
-    x: number,
-  ): void {
-    g.attr('class', 'pc-axis').attr('transform', `translate(${x},0)`);
-    const [name, unit] = axis.label.split(' (');
+  ): AxisExtent {
     const title = g
       .append('text')
       .attr('class', 'pc-title')
       .attr('y', MARGIN.top - 24);
+    const [name, unit] = axis.title;
     title.append('tspan').attr('x', 0).text(name);
-    if (unit)
-      title.append('tspan').attr('x', 0).attr('dy', 13).attr('class', 'pc-unit').text(`(${unit}`);
-    // Hovering the axis name shows the same plain-language definition as the detail card.
+    if (unit) title.append('tspan').attr('x', 0).attr('dy', 13).attr('class', 'pc-unit').text(unit);
+    // Hovering the axis name shows the full name and the plain-language definition.
     const term = TERMS[axis.key as keyof typeof TERMS];
-    if (term) title.append('title').text(term.text);
+    title.append('title').text(term ? `${axis.label}: ${term.text}` : axis.label);
 
-    g.append('line').attr('class', 'pc-line').attr('y1', this.y(0)).attr('y2', this.y(1));
+    const body = g.append('g').attr('class', 'pc-body');
+    body.append('line').attr('class', 'pc-line').attr('y1', this.y(0)).attr('y2', this.y(1));
     for (const tick of axis.ticks) {
       const ty = this.y(tick.t);
-      g.append('line').attr('class', 'pc-tick').attr('x1', -4).attr('y1', ty).attr('y2', ty);
-      g.append('text')
-        // Category names are long, so they sit right of the axis (haloed over the lines).
+      body.append('line').attr('class', 'pc-tick').attr('x1', -4).attr('y1', ty).attr('y2', ty);
+      body
+        .append('text')
+        // Category levels are longer, so they get a stronger halo over the lines they cross.
         .attr('class', axis.kind === 'category' ? 'pc-level' : 'pc-tick-label')
-        .attr('x', axis.kind === 'category' ? 7 : -7)
+        .attr('x', -7)
         .attr('y', ty)
         .attr('dy', '0.32em')
         .text(tick.label);
@@ -180,11 +206,13 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     ];
     for (const slot of slots.filter((s) => s.show)) {
       const sy = this.y(slot.t);
-      g.append('line')
+      body
+        .append('line')
         .attr('class', 'pc-slot')
         .attr('y1', sy - 8)
         .attr('y2', sy + 8);
-      g.append('text')
+      body
+        .append('text')
         .attr('class', 'pc-tick-label')
         .attr('x', -7)
         .attr('y', sy)
@@ -192,10 +220,21 @@ export class ParallelCoordinatesComponent implements OnDestroy {
         .text(slot.label);
     }
 
+    const t = (title.node() as SVGTextElement).getBBox();
+    const b = (body.node() as SVGGElement).getBBox();
+    return {
+      titleLeft: -t.x,
+      titleRight: t.x + t.width,
+      bodyLeft: Math.max(-b.x, BRUSH_HALF),
+      bodyRight: Math.max(b.x + b.width, BRUSH_HALF),
+    };
+  }
+
+  private addBrush(g: Selection<SVGGElement, unknown, null, undefined>, axis: ParallelAxis): void {
     const behavior = brushY<unknown>()
       .extent([
-        [-12, this.y(axis.hasUnphysical ? T_MAX : 1) - 4],
-        [12, this.y(axis.hasMissing ? T_MIN : 0) + 4],
+        [-BRUSH_HALF, this.y(axis.hasUnphysical ? T_MAX : 1) - 4],
+        [BRUSH_HALF, this.y(axis.hasMissing ? T_MIN : 0) + 4],
       ])
       .on('brush end', (event: D3BrushEvent<unknown>) => {
         if (!event.sourceEvent) return; // programmatic move (layout or clear)
@@ -244,7 +283,7 @@ export class ParallelCoordinatesComponent implements OnDestroy {
     }
     this.drawn.set(drawn);
 
-    const xs = axes.map((_, k) => this.x(k));
+    const xs = this.xs;
     const stroke = (indices: number[], color: string, alpha: number) => {
       if (!indices.length) return;
       ctx.globalAlpha = alpha;

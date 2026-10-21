@@ -1,7 +1,7 @@
 # Execution Plan: Review fixes and coverage features
 
 - **Date**: 2026-10-20
-- **Status**: In Progress
+- **Status**: Completed
 - **Owner**: Claude (agent)
 
 ## 1. Goal & Objectives
@@ -114,6 +114,21 @@ axis layout. One commit per phase, with tests for every rule change.
   computed stiffness; near portlandite, the binder in cement, only 2 do." Subtitle: 5,929
   structural candidates, 90% never calculated.
 
+### Phase 8: UI fixes
+
+- Reproduced at 800 px: Formation E/Instability, Instability/Bulk modulus and Element
+  cost/Scarcest element titles overlapped; Bulk/Shear touched; the 760 px minimum plot overflowed
+  its 753 px box. The long split category names also crossed the Origin axis labels.
+- Fix: short titles plus a unit line (full name in the tooltip), category levels left of the
+  axis, and `axisPositions` places axes from measured label extents (title row and body row
+  separately), widening the plot to scroll inside its container only when needed.
+- `e2e/parallel-axes.spec.ts` asserts no cross-axis text overlap and no clipping at 390, 768,
+  800 and 1280 px; run against the old layout it fails with exactly the reported collisions.
+- MP links: current IDs are base 26 (a = 0) of the old numbers (anchors: mp-13, mp-134, mp-1143,
+  mp-3953, mp-7000, mp-23879 ...). `materialsproject.org/materials/<id>` 301-redirects to
+  next-gen for both formats; next-gen returns a Cloudflare challenge (HTTP 403) to automated
+  clients, so rendering was not confirmed. The card shows "(formerly mp-13)".
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
@@ -123,12 +138,12 @@ axis layout. One commit per phase, with tests for every rule change.
 - [x] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
 - [x] **Phase 6**: extrapolation-distance overlay.
 - [x] **Phase 7**: shareable figure.
-- [ ] **Phase 8**: property-profile axis layout, MP link check.
+- [x] **Phase 8**: property-profile axis layout, MP link check.
 
 ## 5. Verification Plan
 
-- [ ] `pytest pipeline`, `npm test`, `npm run lint`, `npm run format:check`, `npm run e2e`
-- [ ] Browser check at phone, 800 px, tablet and desktop widths
+- [x] `pytest pipeline`, `npm test`, `npm run lint`, `npm run format:check`, `npm run e2e`
+- [x] Browser check at phone, 800 px, tablet and desktop widths (Playwright captures)
 
 ## 6. Risks, Ceilings & Rollback
 

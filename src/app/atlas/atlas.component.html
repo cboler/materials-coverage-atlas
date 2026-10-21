@@ -187,6 +187,14 @@
           <a [href]="d.url" target="_blank" rel="noopener noreferrer"
             >{{ d.id }} on Materials Project ↗</a
           >
+          @if (d.legacyId) {
+            <span
+              class="muted legacy-id"
+              title="Materials Project's older numeric ID for this material"
+            >
+              (formerly {{ d.legacyId }})
+            </span>
+          }
           @if (canShowSimilar()) {
             <button type="button" class="link-button" (click)="similarFor.set(selected())">
               Show similar materials

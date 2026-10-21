@@ -1,6 +1,6 @@
 /** Axes and brush filtering for the parallel coordinates view. Pure functions over Atlas. */
 import { quantileSorted, scaleLinear, scaleLog, scaleSqrt } from 'd3';
-import { Atlas, categoryLabel, fmtNumber } from './atlas-data';
+import { Atlas, categoryShortLabel, fmtNumber } from './atlas-data';
 
 /**
  * Every material gets a position t on every axis: 0 = bottom, 1 = top. Missing values sit in a
@@ -21,7 +21,10 @@ type Kind = 'linear' | 'sqrt' | 'log' | 'category';
 
 export interface ParallelAxis {
   key: string;
+  /** Full name, for the hover tooltip. */
   label: string;
+  /** Axis title lines: a short name, then the unit (if any). */
+  title: string[];
   kind: Kind;
   ticks: { t: number; label: string }[];
   positions: Float32Array;
@@ -32,6 +35,8 @@ export interface ParallelAxis {
 interface AxisSpec {
   key: keyof Atlas['columns'];
   label: string;
+  /** Short name and unit drawn above the axis; the full label is in the tooltip. */
+  title: string[];
   kind: Kind;
   levels?: (atlas: Atlas) => string[];
   /**
@@ -46,24 +51,93 @@ const SPECS: AxisSpec[] = [
   {
     key: 'category',
     label: 'Category',
+    title: ['Category'],
     kind: 'category',
-    levels: (a) => a.meta.categories.map(categoryLabel),
+    levels: (a) => a.meta.categories.map(categoryShortLabel),
   },
   {
     key: 'theoretical',
     label: 'Origin',
+    title: ['Origin'],
     kind: 'category',
     levels: () => ['Made in a lab', 'Predicted only'],
   },
-  { key: 'band_gap', label: 'Band gap (eV)', kind: 'linear' },
-  { key: 'formation_energy', label: 'Formation E (eV/atom)', kind: 'linear' },
+  { key: 'band_gap', label: 'Band gap (eV)', title: ['Band gap', 'eV'], kind: 'linear' },
+  {
+    key: 'formation_energy',
+    label: 'Formation energy (eV/atom)',
+    title: ['Formation E', 'eV/atom'],
+    kind: 'linear',
+  },
   // Most entries sit within 0.1 eV of the hull; a square-root axis spreads that region out.
-  { key: 'e_above_hull', label: 'Instability (eV/atom above hull)', kind: 'sqrt' },
-  { key: 'k_vrh', label: 'Bulk modulus (GPa)', kind: 'linear', physical: [0, 500] },
-  { key: 'g_vrh', label: 'Shear modulus (GPa)', kind: 'linear', physical: [0, 600] },
-  { key: 'cost', label: 'Element cost ($/kg)', kind: 'log' },
-  { key: 'abundance', label: 'Scarcest element (ppm)', kind: 'log' },
+  {
+    key: 'e_above_hull',
+    label: 'Instability (eV/atom above hull)',
+    title: ['Instability', 'eV/atom'],
+    kind: 'sqrt',
+  },
+  {
+    key: 'k_vrh',
+    label: 'Bulk modulus (GPa)',
+    title: ['Bulk mod.', 'GPa'],
+    kind: 'linear',
+    physical: [0, 500],
+  },
+  {
+    key: 'g_vrh',
+    label: 'Shear modulus (GPa)',
+    title: ['Shear mod.', 'GPa'],
+    kind: 'linear',
+    physical: [0, 600],
+  },
+  { key: 'cost', label: 'Element cost ($/kg)', title: ['Cost', '$/kg'], kind: 'log' },
+  {
+    key: 'abundance',
+    label: 'Scarcest element abundance (ppm)',
+    title: ['Abundance', 'ppm'],
+    kind: 'log',
+  },
 ];
+
+/** Horizontal room an axis's labels need on each side of its line, in px. */
+export interface AxisExtent {
+  titleLeft: number;
+  titleRight: number;
+  bodyLeft: number;
+  bodyRight: number;
+}
+
+/**
+ * Axis x positions that keep every label clear of its neighbors and of the plot edges. Titles
+ * and bodies (ticks, levels, slots) sit at different heights, so each pair of neighbors only
+ * needs room for the wider of the two rows. Spare width is shared between the gaps; when the
+ * labels need more than ``available``, the returned width exceeds it and the plot scrolls inside
+ * its container instead of overlapping or clipping.
+ */
+export function axisPositions(
+  extents: AxisExtent[],
+  available: number,
+  edge: number,
+  gap: number,
+): { xs: number[]; width: number } {
+  if (!extents.length) return { xs: [], width: available };
+  const xs = [edge + Math.max(extents[0].titleLeft, extents[0].bodyLeft)];
+  for (let k = 1; k < extents.length; k++) {
+    const a = extents[k - 1];
+    const b = extents[k];
+    const need = Math.max(a.titleRight + b.titleLeft, a.bodyRight + b.bodyLeft) + gap;
+    xs.push(xs[k - 1] + need);
+  }
+  const last = extents.at(-1)!;
+  const needed = xs.at(-1)! + Math.max(last.titleRight, last.bodyRight) + edge;
+  const spare = available - needed;
+  if (spare > 0 && xs.length > 1) {
+    const step = spare / (xs.length - 1);
+    return { xs: xs.map((x, k) => x + k * step), width: available };
+  }
+  if (spare > 0) return { xs: [available / 2], width: available };
+  return { xs, width: Math.ceil(needed) };
+}
 
 /** Deterministic per-material jitter in [-0.5, 0.5): spreads lines into ribbons on category axes. */
 function jitter(i: number, salt: number): number {
@@ -87,6 +161,7 @@ export function buildAxes(atlas: Atlas): ParallelAxis[] {
       return {
         key: spec.key,
         label: spec.label,
+        title: spec.title,
         kind: spec.kind,
         ticks: levels.map((label, l) => ({ t: 1 - (l + 0.5) * step, label })),
         positions,
@@ -128,6 +203,7 @@ export function buildAxes(atlas: Atlas): ParallelAxis[] {
     return {
       key: spec.key,
       label: spec.label,
+      title: spec.title,
       kind: spec.kind,
       ticks: tickValues.map((v) => ({ t: scale(v), label: fmtNumber(v) })),
       positions,

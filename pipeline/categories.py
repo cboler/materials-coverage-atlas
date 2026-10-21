@@ -82,6 +82,10 @@ energy
     GGA. The earlier rule (any working ion + redox metal + gap > 0) matched 16,814 entries and
     missed those four; this one matches ~9,700 and keeps all 19 reference electrodes checked
     (LiCoO2, LiFePO4, LiMn2O4, NaFePO4, KMnO2, ZnMn2O4, Li4Ti5O12, ...).
+    Measured against MP's insertion electrodes (electrodes.py, MP v2026.09.28): recall 0.86
+    of 4,154 intercalated states within the 0.05 eV/atom window (0.31 of all 11,698, most of
+    which sit above the hull), precision 0.50 against an approximate negative set of 16,646
+    ion-bearing compounds never used as an electrode framework. The build recomputes these.
     Or a photovoltaic-absorber candidate: PV_GAP_MIN (1.0 eV) <= band gap <= PV_GAP_MAX (1.8 eV),
     the window around the Shockley-Queisser optimum.
 
@@ -207,6 +211,20 @@ def physical_elastic(df: pd.DataFrame) -> pd.Series:
     )
 
 
+def battery_candidate(df: pd.DataFrame) -> pd.Series:
+    """The battery-electrode half of the energy rule (no hull gate beyond its own 0.05 cut)."""
+    elements = df["elements"].map(set)
+    return (
+        (df["working_ion_fraction"] >= BATTERY_MIN_ION_FRACTION)
+        & elements.map(
+            lambda els: bool(els & REDOX_METALS)
+            and bool(els & FRAMEWORK_ANIONS)
+            and not els & SPECTATOR_CATIONS
+        )
+        & (df["e_above_hull"] <= BATTERY_MAX_E_HULL)
+    )
+
+
 def candidate_flags(df: pd.DataFrame) -> pd.DataFrame:
     """Boolean column per category (except unclassified): does the material pass that rule?
 
@@ -229,15 +247,7 @@ def candidate_flags(df: pd.DataFrame) -> pd.DataFrame:
         & (df["magnetization"] >= MIN_MAGNETIZATION)
         & ((gap <= 0) | (df["ordering"] == "FiM"))
     )
-    battery = (
-        (df["working_ion_fraction"] >= BATTERY_MIN_ION_FRACTION)
-        & elements.map(
-            lambda els: bool(els & REDOX_METALS)
-            and bool(els & FRAMEWORK_ANIONS)
-            and not els & SPECTATOR_CATIONS
-        )
-        & (df["e_above_hull"] <= BATTERY_MAX_E_HULL)
-    )
+    battery = battery_candidate(df)
     photovoltaic = gap.between(PV_GAP_MIN, PV_GAP_MAX)
     semiconductor = gap.between(SEMI_GAP_MIN, SEMI_GAP_MAX)
 

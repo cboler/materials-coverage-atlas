@@ -6,3 +6,6 @@ numpy>=1.26
 umap-learn>=0.5.7
 mendeleev>=0.17
 pytest>=8
+deltalake>=1.0
+scikit-learn>=1.5
+matplotlib>=3.9

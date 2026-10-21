@@ -429,6 +429,31 @@
           </dd>
         }
       </dl>
+      @if (atlas()?.meta?.validation?.battery_electrode; as v) {
+        <div class="rule-check" id="electrode-check">
+          <h3>How well does the battery-electrode rule work?</h3>
+          <p>
+            Checked against the {{ v.electrodes | number }} insertion electrodes Materials Project
+            has computed. <strong>Recall {{ (v.recall ?? 0) * 100 | number: '1.0-0' }}%</strong>:
+            the rule catches {{ v.true_positives | number }} of the
+            {{ v.positives_in_window | number }} charged-electrode compounds stable enough for it to
+            consider (within {{ v.hull_window }} eV/atom of the hull);
+            {{ (v.recall_all_positives ?? 0) * 100 | number: '1.0-0' }}% of all
+            {{ v.positives | number }}, since most sit above that cut.
+            <strong
+              >Precision about {{ (v.precision ?? 0) * 100 | number: '1.0-0' }}%
+              (approximate)</strong
+            >: when it flags a compound from the test set, that is how often the compound is a known
+            electrode. The rest of the test set is {{ v.negatives | number }} stable compounds that
+            contain a working ion but never appear as an electrode framework.
+          </p>
+          <p class="note">
+            The negative set is approximate: MP has only computed electrodes for chemistries someone
+            chose to study, so some "negatives" are working electrodes nobody has calculated yet.
+            Read the precision as a lower bound.
+          </p>
+        </div>
+      }
       <p class="note">
         The computed band gaps tend to run lower than lab measurements. Full rationale lives in
         <code>pipeline/categories.py</code>.

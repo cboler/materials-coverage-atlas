@@ -3,6 +3,12 @@
 The cache lives in ``pipeline/cache/`` (git-ignored). ``load_summary()`` returns the cached
 table unless the cache is missing, was built with a different field list, or ``refresh=True``.
 That keeps iteration on categories/embedding/frontend from re-hitting the API.
+
+Auxiliary collections (insertion electrodes, provenance) come from the Materials Project's
+public AWS Open Data bucket (``s3://materialsproject-build/collections/<name>``), the Delta
+tables that mp-api's own bulk download reads (``mpr.materials.insertion_electrodes``,
+``mpr.materials.provenance``). They are read anonymously, need no API key, are pinned to the
+summary's database version, and are cached per version in ``pipeline/cache/``.
 """
 
 from __future__ import annotations
@@ -120,3 +126,37 @@ def load_summary(refresh: bool = False) -> tuple[pd.DataFrame, dict]:
     SUMMARY_META_PATH.write_text(json.dumps(meta, indent=2))
     print(f"Cached {meta['count']} materials to {SUMMARY_PATH}.")
     return df, meta
+
+
+OPEN_DATA = "s3://materialsproject-build/collections"
+OPEN_DATA_OPTIONS = {"AWS_SKIP_SIGNATURE": "true", "AWS_REGION": "us-east-1"}
+
+
+def load_open_data(collection: str, version: str, columns: list[str]) -> pd.DataFrame:
+    """One MP collection at one database version, from the public bucket, cached locally.
+
+    ``version`` is MP's dotted database version (e.g. "2026.09.28"); the Delta tables are
+    partitioned by the dashed form. Changing ``columns`` refreshes the cache.
+    """
+    path = CACHE_DIR / f"{collection}-{version}.parquet"
+    if path.exists():
+        cached = pd.read_parquet(path)
+        if list(cached.columns) == columns:
+            return cached
+
+    import pyarrow.dataset as ds
+    from deltalake import DeltaTable
+
+    print(f"Fetching {collection} (MP {version}) from the Materials Project open-data bucket...")
+    table = DeltaTable(f"{OPEN_DATA}/{collection}", storage_options=OPEN_DATA_OPTIONS)
+    partition = version.replace(".", "-")
+    df = (
+        table.to_pyarrow_dataset()
+        .to_table(filter=ds.field("version") == partition, columns=columns)
+        .to_pandas()
+    )
+    if df.empty:
+        raise SystemExit(f"{collection} has no rows for MP version {version}.")
+    CACHE_DIR.mkdir(exist_ok=True)
+    df.to_parquet(path, index=False)
+    return df

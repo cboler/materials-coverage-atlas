@@ -22,8 +22,9 @@ import pandas as pd
 from pymatgen.core import Composition
 
 from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_categories
+from electrodes import ELECTRODE_COLUMNS, electrode_validation
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
-from fetch import load_summary
+from fetch import load_open_data, load_summary
 from supply import supply_metrics
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "public" / "data" / "atlas.json"
@@ -137,6 +138,21 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
         f"{never.sum() / max(candidates.sum(), 1):.1%} never had stiffness calculated"
     )
 
+    print("Validating the battery-electrode rule against MP insertion electrodes...")
+    validation = {}
+    try:
+        electrodes = load_open_data(
+            "insertion-electrodes", cache_meta["database_version"], ELECTRODE_COLUMNS
+        )
+        validation["battery_electrode"] = v = electrode_validation(df, electrodes)
+        print(
+            f"  precision {v['precision']} (vs {v['negatives']} approximate negatives), recall "
+            f"{v['recall']} within the hull window ({v['positives_in_window']} electrode states), "
+            f"{v['recall_all_positives']} over all {v['positives']}"
+        )
+    except Exception as exc:  # network or bucket problems must not block the atlas build
+        print(f"  ! skipped: {exc}")
+
     print("Building features...")
     features = feature_matrix(df, compositions)
     formulas = df["formula"].to_numpy()
@@ -161,6 +177,7 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "categories": CATEGORIES,
             "orderings": ORDERINGS,
             "rules": RULES,
+            "validation": validation,
             "umap": {**UMAP_PARAMS, "block_weights": BLOCK_WEIGHTS},
         },
         "columns": {

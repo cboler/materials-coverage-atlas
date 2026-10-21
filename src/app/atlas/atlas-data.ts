@@ -14,6 +14,24 @@ export interface AtlasMeta {
   categories: string[];
   orderings: string[];
   rules: Record<string, string>;
+  /** Rule checks computed by the pipeline. Absent in atlas files built before them. */
+  validation?: { battery_electrode?: ElectrodeValidation };
+}
+
+/** Battery-electrode rule vs MP insertion electrodes (pipeline/electrodes.py). */
+export interface ElectrodeValidation {
+  electrodes: number;
+  positives: number;
+  positives_in_window: number;
+  negatives: number;
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  precision: number | null;
+  recall: number | null;
+  recall_all_positives: number | null;
+  hull_window: number;
+  negatives_approximate: boolean;
 }
 
 export interface AtlasColumns {

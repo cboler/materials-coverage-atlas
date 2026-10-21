@@ -121,8 +121,12 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   structural here. Magnesium misses the 25 GPa shear cut (24.4 GPa in MP).
 - The battery-electrode rule does not require a band gap, because several real electrodes
   (LiNiO₂, LiTiS₂) are metallic in GGA. It requires an anion framework, a meaningful working-ion
-  fraction, and no spectator cations instead. It was checked against 19 known electrodes, but
-  there is no labeled set of non-electrodes, so false positives are not measured.
+  fraction, and no spectator cations instead. Against MP's 6,847 insertion electrodes it catches
+  86% of the intercalated compounds within its 0.05 eV/atom stability window (31% of all, since
+  most sit above the hull). Precision is about 50% against an approximate negative set (stable
+  compounds with a working ion that never appear as an electrode framework); some of those are
+  real but uncomputed electrodes, so treat it as a lower bound. The pipeline recomputes both
+  (`pipeline/electrodes.py`) and the app shows them under Category rules.
 - Element cost is the mass-weighted raw element price. It ignores processing, so treat it as a
   floor. Abundance is the crustal abundance of the scarcest element in the formula. Both come
   from the `mendeleev` element table.

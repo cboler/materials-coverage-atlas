@@ -493,6 +493,27 @@ table {
   }
 }
 
+.rule-check {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+
+  h3 {
+    font-size: var(--font-size-sm);
+    margin: 0 0 var(--space-2);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  strong {
+    color: var(--text-primary);
+  }
+}
+
 .attribution {
   margin-top: var(--space-8);
   font-size: var(--font-size-xs);

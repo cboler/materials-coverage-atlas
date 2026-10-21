@@ -64,12 +64,25 @@ axis layout. One commit per phase, with tests for every rule change.
   corundum → structural ceramic; portlandite stays unclassified (soft measured moduli) but is
   a structural candidate.
 
+### Phase 4: electrode precision/recall
+
+- Endpoint: `mpr.materials.insertion_electrodes` (route `materials/insertion_electrodes`). Its
+  full dataset is the Delta table `s3://materialsproject-build/collections/insertion-electrodes`,
+  partitioned by version; read anonymously with `deltalake` (`fetch.load_open_data`).
+- 6,847 electrodes (Li 2,774, Mg 1,968, Ca 625, Zn 434, Na 416, K 164, Y 159, Al 143, Rb 83,
+  Cs 81). Positives: 11,698 intercalated states for Li/Na/K/Mg/Zn electrodes; 4,154 within the
+  rule's 0.05 eV/atom window. Negatives (approximate): 16,646 compounds in the window that
+  contain a working ion, are in no electrode, and whose ion-free framework is no electrode host.
+- Recall 0.863 in the window (0.306 over all positives); precision 0.499; 21.6% of negatives
+  flagged. Typical misses: no listed redox metal (Sb, Sn, Tl, Re), spectator Sr/Ba, alloys.
+  Typical "false positives" look like real cathode chemistries (Li–Mn–Co–O, Li–Ti–Cr–O).
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
 - [x] **Phase 2**: metallic vs mineral/ceramic split, cost/abundance gate on the verified path.
 - [x] **Phase 3**: coloring order / multi-membership.
-- [ ] **Phase 4**: electrode precision/recall against MP insertion electrodes.
+- [x] **Phase 4**: electrode precision/recall against MP insertion electrodes.
 - [ ] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
 - [ ] **Phase 6**: extrapolation-distance overlay.
 - [ ] **Phase 7**: shareable figure.

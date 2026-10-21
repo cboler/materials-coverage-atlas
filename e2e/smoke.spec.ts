@@ -48,6 +48,7 @@ test.describe('Responsive Shell Smoke Tests', () => {
         );
       }
       await expect(page.locator('#multi-note')).toBeVisible();
+      await expect(page.locator('#electrode-check')).toContainText('Recall');
 
       // 4. Overlay switching updates the legend
       await page.locator('#overlay-elastic').click();

@@ -158,6 +158,14 @@
   &.flip {
     transform: translate(calc(-100% - 14px), 14px);
   }
+
+  &.flip-y {
+    transform: translate(14px, calc(-100% - 14px));
+  }
+
+  &.flip.flip-y {
+    transform: translate(calc(-100% - 14px), calc(-100% - 14px));
+  }
 }
 
 .reset {
@@ -275,9 +283,68 @@
   color: var(--text-primary);
 }
 
+// Plain text: the tooltip follows the pointer and can't be clicked, so nothing in it looks like a link.
 .hint {
-  color: var(--color-primary);
+  color: var(--text-muted);
+  font-style: italic;
   margin-top: 2px;
+}
+
+// Pinned card for the selected material: stays put (and follows zoom) until closed.
+.pinned {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: min(250px, calc(100% - 8px));
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.45);
+  font-size: var(--font-size-xs);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target-min);
+  }
+}
+
+.pinned-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+
+  strong {
+    padding-top: var(--space-2);
+  }
+}
+
+.pinned-close {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-3)) 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.pinned-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+
+  .link-button {
+    min-height: var(--touch-target-min);
+  }
 }
 
 dt[title] {

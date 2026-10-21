@@ -89,8 +89,10 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
 ## Using the atlas
 
 - **Scroll or pinch** to zoom and **drag** to pan. **Reset view** restores the full map.
-- **Hover** a point for a summary. **Click or tap** it to pin details, with a link to its
-  Materials Project page.
+- **Hover** a point for a summary. **Click or tap** it to pin a card next to it with its
+  Materials Project link (current and former ID), "Show similar" for landmarks, and a jump to
+  the full details. The card stays open while you zoom or move the pointer; close it with × or
+  Esc.
 - **Overlay buttons** recolor the map. **Legend entries** hide or show a group. With five
   categories on one scatter, no palette keeps every pair distinct under color-vision deficiency,
   so isolating groups from the legend is the reliable way to compare them.

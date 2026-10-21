@@ -69,6 +69,12 @@ const CONTOUR_BANDWIDTH = 8; // world px
 /** Region labels appear once their island spans this many screen pixels. */
 const REGION_MIN_PX = 36;
 const HOVER_RADIUS = 10; // screen px; larger than the marks so small points are easy to hit
+/** Pinned-card size before it has rendered once (it is measured after that). */
+const PINNED_W = 250;
+const PINNED_H = 190;
+/** Gap between the selected dot and the card, and between the card and the plot edge. */
+const PINNED_GAP = 12;
+const PINNED_EDGE = 4;
 const RULE_ORDER = [
   'gate',
   'structural',
@@ -128,7 +134,12 @@ export class AtlasComponent implements OnDestroy {
     const mask = this.filterMask();
     return mask ? mask.reduce((n, v) => n + v, 0) : null;
   });
-  protected readonly tooltipAt = signal({ x: 0, y: 0, flip: false });
+  protected readonly tooltipAt = signal({ x: 0, y: 0, flip: false, flipY: false });
+  /**
+   * Where the pinned card for the selected material sits (plot pixels), or null when nothing is
+   * selected or the point is panned out of view. Updated on every redraw so it follows zoom.
+   */
+  protected readonly pinnedAt = signal<{ left: number; top: number } | null>(null);
   protected readonly showContours = signal(true);
   /** Index of the anchor whose "similar materials" panel is open. */
   protected readonly similarFor = signal<number | null>(null);
@@ -190,7 +201,11 @@ export class AtlasComponent implements OnDestroy {
       text: rules[k],
     }));
   });
-  protected readonly hoverDetail = computed(() => this.detailFor(this.hovered()));
+  /** The hover summary, except over the selected point, whose pinned card is already open. */
+  protected readonly hoverDetail = computed(() => {
+    const i = this.hovered();
+    return i === this.selected() ? null : this.detailFor(i);
+  });
   protected readonly selectedDetail = computed(() => this.detailFor(this.selected()));
 
   private ctx: CanvasRenderingContext2D | null = null;
@@ -272,6 +287,17 @@ export class AtlasComponent implements OnDestroy {
     this.similarFor.set(index);
   }
 
+  protected closePinned(): void {
+    this.selected.set(null);
+  }
+
+  /** Bring the full detail card (side panel, or below the map on phones) into view. */
+  protected showFullDetails(): void {
+    const card = document.getElementById('selected-detail');
+    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    card?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  }
+
   /** Select a point; selecting an anchor also opens its similar-materials panel. */
   private selectPoint(i: number | null): void {
     this.selected.set(i);
@@ -322,11 +348,15 @@ export class AtlasComponent implements OnDestroy {
       this.hovered.set(i);
       if (i !== null) {
         const flip = e.offsetX > this.size.width - 240;
-        this.tooltipAt.set({ x: e.offsetX, y: e.offsetY, flip });
+        const flipY = e.offsetY > this.size.height - 190; // keep it off the plot's bottom edge
+        this.tooltipAt.set({ x: e.offsetX, y: e.offsetY, flip, flipY });
       }
     });
     svg.addEventListener('pointerleave', () => this.hovered.set(null));
-    svg.addEventListener('click', (e) => this.selectPoint(this.pick(e)));
+    // Pin what the hover summary shows. Re-picking at the click would often choose another dot:
+    // click coordinates are whole pixels while pointer moves are fractional, and crowded
+    // neighbors (iron's alloys) sit well under a pixel apart. Touch has no hover, so it picks.
+    svg.addEventListener('click', (e) => this.selectPoint(this.hovered() ?? this.pick(e)));
 
     this.resizeObserver = new ResizeObserver(() => this.layout());
     this.resizeObserver.observe(this.plotRef().nativeElement);
@@ -437,6 +467,7 @@ export class AtlasComponent implements OnDestroy {
       ctx.stroke();
     }
 
+    this.placePinned(t);
     for (const i of [this.selected(), this.hovered()]) {
       if (i === null) continue;
       const [x, y] = t.apply([this.wx[i], this.wy[i]]);
@@ -446,6 +477,35 @@ export class AtlasComponent implements OnDestroy {
       ctx.strokeStyle = '#f8fafc';
       ctx.stroke();
     }
+  }
+
+  /**
+   * Keep the pinned card next to the selected point: below-right, else on whichever side fits,
+   * then clamped inside the plot (which clips overflow) so its buttons are always reachable.
+   */
+  private placePinned(t: ZoomTransform): void {
+    const i = this.selected();
+    const { width, height } = this.size;
+    if (i === null || !this.wx.length) {
+      if (this.pinnedAt()) this.pinnedAt.set(null);
+      return;
+    }
+    const [x, y] = t.apply([this.wx[i], this.wy[i]]);
+    if (x < 0 || y < 0 || x > width || y > height) {
+      this.pinnedAt.set(null); // panned out of view; reappears when the point returns
+      return;
+    }
+    const card = this.plotRef().nativeElement.querySelector<HTMLElement>('#pinned-card');
+    const w = card?.offsetWidth || PINNED_W;
+    const h = card?.offsetHeight || PINNED_H;
+    const place = (p: number, size: number, room: number) => {
+      const after = p + PINNED_GAP;
+      const start = after + size <= room ? after : p - PINNED_GAP - size;
+      return Math.max(PINNED_EDGE, Math.min(start, room - size - PINNED_EDGE));
+    };
+    this.pinnedAt.set({ left: place(x, w, width), top: place(y, h, height) });
+    // First placement used estimates; place again once the card exists and can be measured.
+    if (!card) this.scheduleDraw();
   }
 
   private drawGroup(

@@ -95,6 +95,7 @@
         <div
           class="tooltip"
           [class.flip]="tooltipAt().flip"
+          [class.flip-y]="tooltipAt().flipY"
           [style.left.px]="tooltipAt().x"
           [style.top.px]="tooltipAt().y"
           role="tooltip"
@@ -117,8 +118,57 @@
           <span>
             Stiffness: <span class="muted">{{ describe.stiffness(d.shearModulus) }}</span>
           </span>
-          <span class="hint">Click for details</span>
+          <span class="hint">Click the dot to pin it, with links</span>
         </div>
+      }
+
+      @if (selectedDetail(); as d) {
+        @if (pinnedAt(); as p) {
+          <div
+            class="pinned"
+            id="pinned-card"
+            role="dialog"
+            [attr.aria-label]="d.formula + ' details'"
+            [style.left.px]="p.left"
+            [style.top.px]="p.top"
+            (keydown.escape)="closePinned()"
+          >
+            <div class="pinned-head">
+              <strong>
+                {{ d.formula }}
+                @if (d.anchor) {
+                  <span class="muted">· {{ d.anchor }}</span>
+                }
+              </strong>
+              <button
+                type="button"
+                class="pinned-close"
+                aria-label="Close"
+                title="Close (Esc)"
+                (click)="closePinned()"
+              >
+                ×
+              </button>
+            </div>
+            <span><i class="swatch" [style.background]="d.color"></i>{{ d.category }}</span>
+            <a [href]="d.url" target="_blank" rel="noopener noreferrer"
+              >{{ d.id }} on Materials Project ↗</a
+            >
+            @if (d.legacyId) {
+              <span class="muted">formerly {{ d.legacyId }}</span>
+            }
+            <div class="pinned-actions">
+              @if (canShowSimilar()) {
+                <button type="button" class="link-button" (click)="similarFor.set(selected())">
+                  Show similar
+                </button>
+              }
+              <button type="button" class="link-button" (click)="showFullDetails()">
+                All details
+              </button>
+            </div>
+          </div>
+        }
       }
 
       @if (state() === 'ready') {
@@ -178,7 +228,7 @@
 
       @if (selectedDetail(); as d) {
         <div class="detail" id="selected-detail">
-          <h2 class="detail-title">
+          <h2 class="detail-title" tabindex="-1">
             {{ d.formula }}
             @if (d.anchor) {
               <span class="muted">· {{ d.anchor }}</span>

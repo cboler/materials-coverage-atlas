@@ -21,9 +21,10 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
 
-from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_categories
+from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_categories, physical_elastic
 from electrodes import ELECTRODE_COLUMNS, electrode_validation
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
+from extrapolation import extrapolation
 from fetch import load_open_data, load_summary
 from provenance import NEWER_TIER, TIER_EDGES, TIER_LABELS, entry_tier, legacy_number, novelty, tier_calibration
 from supply import supply_metrics
@@ -193,6 +194,15 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
         f"regions ({found['share_expected']:.0%} expected if they followed the existing spread)"
     )
 
+    print("Extrapolation distance: how far from any stiffness data is each material?")
+    extrap = extrapolation(features, df["k_vrh"].fillna(0).to_numpy(), physical_elastic(df).to_numpy())
+    extrap_bins = extrap.pop("bins")
+    print(
+        f"  K_VRH model: MAE {extrap['mae_gpa']} GPa on {extrap['n_test']} held-out materials "
+        f"(predicting the median: {extrap['baseline_mae_gpa']} GPa); materials per distance bin "
+        f"{dict(zip(extrap['bin_labels'], extrap['counts']))}"
+    )
+
     # Bit i set = candidate for CATEGORIES[i] (multi-label; "category" holds the primary one).
     label_bits = sum(flags[c].astype(int) * (1 << i) for i, c in enumerate(CATEGORIES[:-1]))
     index_of = {mid: i for i, mid in enumerate(df["material_id"])}
@@ -211,6 +221,7 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "rules": RULES,
             "validation": validation,
             "provenance": provenance,
+            "extrapolation": extrap,
             "umap": {**UMAP_PARAMS, "block_weights": BLOCK_WEIGHTS},
         },
         "columns": {
@@ -226,6 +237,9 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "structural_candidate": flags["structural_candidate"].astype(int).tolist(),
             # Entry age (see provenance.py): 0/1 = older tiers, 2 = newer & crowded, 3 = newer & sparse.
             "entry_group": entry_group.astype(int).tolist(),
+            # Distance to the nearest stiffness data, binned (extrapolation.py); null = has data.
+            # A coverage indicator only: predicted moduli are never written.
+            "extrapolation": [None if b < 0 else int(b) for b in extrap_bins],
             "theoretical": df["theoretical"].fillna(True).astype(int).tolist(),
             "band_gap": _round(df["band_gap"], 2),
             "formation_energy": _round(df["formation_energy"], 3),

@@ -37,6 +37,7 @@ import {
   categoryLabel,
   coverageRows,
   entrySummary,
+  extrapolationSummary,
   fmtNumber,
   materialDetail,
   multiCategoryCount,
@@ -111,6 +112,10 @@ export class AtlasComponent implements OnDestroy {
   protected readonly entrySummary = computed(() => {
     const atlas = this.atlas();
     return atlas ? entrySummary(atlas) : null;
+  });
+  protected readonly extrapolationSummary = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? extrapolationSummary(atlas) : null;
   });
   protected readonly state = signal<LoadState>('loading');
   protected readonly overlayId = signal<OverlayId>('category');

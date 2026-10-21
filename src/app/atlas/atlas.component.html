@@ -165,6 +165,9 @@
       @if (overlayId() === 'entry' && entrySummary(); as summary) {
         <p class="note entry-summary" id="entry-summary">{{ summary }}</p>
       }
+      @if (overlayId() === 'extrapolation' && extrapolationSummary(); as summary) {
+        <p class="note" id="extrapolation-summary">{{ summary }}</p>
+      }
       @if (overlayId() === 'category' && multiCount()) {
         <p class="note" id="multi-note">
           {{ multiCount() | number }} materials match more than one category. Each dot takes the

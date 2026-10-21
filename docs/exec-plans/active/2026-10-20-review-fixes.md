@@ -93,6 +93,17 @@ axis layout. One commit per phase, with tests for every rule change.
   0.438 for older-to-older (20k sample); 12.8% beyond the older 75th percentile (25% expected).
   99.6% of newer entries are predicted-only.
 
+### Phase 6: extrapolation overlay
+
+- HistGradientBoostingRegressor (defaults) on the map features, target K_VRH, physical elastic
+  entries only: 9,696 train / 2,425 test, MAE 11.2 GPa (median guess 59.0 GPa).
+- Indicator: mean 10-NN distance to the elastic set. In ~100 dimensions distances bunch (median
+  missing material sits at 1.04× the elastic set's median spacing), so bins use the elastic
+  set's own leave-one-out spacing percentiles (50/90/99): 62,551 / 60,110 / 15,633 / 3,962.
+- Test MAE by bin: 11.7 (n 1,176), 10.7 (975), 10.5 (242), 14.6 GPa (32). A random split keeps
+  test rows in-distribution, so the far bins have few rows; error rises only in the last bin.
+- Only the bin is shipped; predicted moduli are not written to the atlas.
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
@@ -100,7 +111,7 @@ axis layout. One commit per phase, with tests for every rule change.
 - [x] **Phase 3**: coloring order / multi-membership.
 - [x] **Phase 4**: electrode precision/recall against MP insertion electrodes.
 - [x] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
-- [ ] **Phase 6**: extrapolation-distance overlay.
+- [x] **Phase 6**: extrapolation-distance overlay.
 - [ ] **Phase 7**: shareable figure.
 - [ ] **Phase 8**: property-profile axis layout, MP link check.
 

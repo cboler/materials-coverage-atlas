@@ -2,6 +2,7 @@ import {
   availableOverlays,
   buildGroups,
   entrySummary,
+  extrapolationSummary,
   candidateCoverage,
   coverageRows,
   fmtNumber,
@@ -168,6 +169,47 @@ describe('newer-entries overlay', () => {
     atlas.meta.provenance!.knn.share_newer_sparse = 0.4;
     expect(entrySummary(atlas)).toContain('lean toward filling gaps');
     expect(entrySummary(FIXTURE)).toBeNull();
+  });
+});
+
+describe('extrapolation overlay', () => {
+  const atlas = structuredClone(FIXTURE);
+  atlas.columns.extrapolation = [null, null, 0, 3];
+  atlas.meta.extrapolation = {
+    model: 'gbr',
+    n_train: 9696,
+    n_test: 2425,
+    mae_gpa: 11.2,
+    baseline_mae_gpa: 59,
+    bin_labels: ['Close', 'Moderately far', 'Far', 'Very far'],
+    mae_by_distance: [
+      { bin: 'Close', n: 1176, mae_gpa: 11.7 },
+      { bin: 'Moderately far', n: 975, mae_gpa: 10.7 },
+      { bin: 'Far', n: 242, mae_gpa: 10.5 },
+      { bin: 'Very far', n: 32, mae_gpa: 14.6 },
+    ],
+    counts: [1, 0, 0, 1],
+  };
+
+  it('orders bins farthest first and puts materials with data last', () => {
+    const groups = buildGroups(atlas, 'extrapolation');
+    expect(groups.map((g) => [g.label, g.indices])).toEqual([
+      ['Very far', [3]],
+      ['Far', []],
+      ['Moderately far', []],
+      ['Close', [2]],
+      ['Has stiffness data', [0, 1]],
+    ]);
+    expect(availableOverlays(atlas).map((o) => o.id)).toContain('extrapolation');
+    expect(availableOverlays(FIXTURE).map((o) => o.id)).not.toContain('extrapolation');
+  });
+
+  it('states the model error but never a predicted value', () => {
+    const text = extrapolationSummary(atlas)!;
+    expect(text).toContain('within 11.2 GPa');
+    expect(text).toContain('farthest bin it was off by 14.6 GPa');
+    expect(text).toContain('not shown');
+    expect(extrapolationSummary(FIXTURE)).toBeNull();
   });
 });
 

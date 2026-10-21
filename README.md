@@ -10,7 +10,9 @@ coverage is thin.
   documented in [`pipeline/categories.py`](pipeline/categories.py) and shown in the app.
 - **Overlays**: element abundance, element cost, experimental vs. theoretical, elastic-data
   coverage (which entries lack bulk/shear moduli), and newer entries (added ~2020 onward, split
-  by whether they land in sparse or crowded parts of feature space).
+  by whether they land in sparse or crowded parts of feature space), and distance from stiffness
+  data (how far a stiffness prediction would have to extrapolate; a coverage indicator, not a
+  prediction).
 - **Anchors**: calcite, gypsum, portlandite, alite, belite, quartz, corundum, iron and aluminum
   are pinned and labeled as reference points.
 - **Region labels and density contours**: islands of the map are named by their dominant chemistry

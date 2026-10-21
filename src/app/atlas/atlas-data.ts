@@ -18,6 +18,19 @@ export interface AtlasMeta {
   validation?: { battery_electrode?: ElectrodeValidation };
   /** Entry age and where newer entries land (pipeline/provenance.py). */
   provenance?: ProvenanceSummary;
+  /** Stiffness model check and distance-to-data bins (pipeline/extrapolation.py). */
+  extrapolation?: ExtrapolationSummary;
+}
+
+export interface ExtrapolationSummary {
+  model: string;
+  n_train: number;
+  n_test: number;
+  mae_gpa: number;
+  baseline_mae_gpa: number;
+  bin_labels: string[];
+  mae_by_distance: { bin: string; n: number; mae_gpa: number | null }[];
+  counts: number[];
 }
 
 export interface ProvenanceSummary {
@@ -75,6 +88,11 @@ export interface AtlasColumns {
   structural_candidate?: number[];
   /** Entry age: 0/1 = older tiers, 2 = newer in a crowded area, 3 = newer in a sparse area. */
   entry_group?: number[];
+  /**
+   * Distance from the nearest stiffness data, binned 0 (close) to 3 (very far); null = has usable
+   * stiffness data. A coverage indicator only: no predicted moduli are shipped.
+   */
+  extrapolation?: Maybe<number>[];
   theoretical: number[];
   band_gap: Maybe<number>[];
   formation_energy: Maybe<number>[];
@@ -101,7 +119,8 @@ export interface Atlas {
   anchors: Anchor[];
 }
 
-export type OverlayId = 'category' | 'experimental' | 'elastic' | 'abundance' | 'cost' | 'entry';
+export type OverlayId =
+  'category' | 'experimental' | 'elastic' | 'abundance' | 'cost' | 'entry' | 'extrapolation';
 
 export interface Overlay {
   id: OverlayId;
@@ -153,6 +172,12 @@ export const OVERLAYS: Overlay[] = [
     label: 'Newer entries',
     note: 'When each material was added, read from its Materials Project ID (IDs were handed out in order; per-entry dates are too coarse to use). Newer entries are split by whether their closest older materials, across all ~100 traits, are unusually far away (a sparse area) or not (a crowded area). No public field says whether an entry came from a machine-learning pipeline.',
     requires: 'entry_group',
+  },
+  {
+    id: 'extrapolation',
+    label: 'Distance from stiffness data',
+    note: 'A coverage indicator, not a property prediction. For materials without stiffness data: how far they sit, across all ~100 traits, from the nearest materials that have it, so how far any stiffness prediction for them would be extrapolating. Brighter means farther. Grey: has stiffness data.',
+    requires: 'extrapolation',
   },
 ];
 
@@ -241,7 +266,41 @@ export function buildGroups(atlas: Atlas, overlay: OverlayId): Group[] {
       return binGroups(c.cost, COST_THRESHOLDS, '$', '/kg');
     case 'entry':
       return entryGroups(atlas);
+    case 'extrapolation':
+      return extrapolationGroups(atlas);
   }
+}
+
+/** Farthest first and brightest (blue ramp 200 -> 600); materials with data recede to grey. */
+function extrapolationGroups(atlas: Atlas): Group[] {
+  const bins = atlas.columns.extrapolation ?? [];
+  const labels = atlas.meta.extrapolation?.bin_labels ?? ['Close', 'Moderate', 'Far', 'Very far'];
+  const colors = [SEQUENTIAL[0], SEQUENTIAL[2], SEQUENTIAL[4], SEQUENTIAL[6]];
+  const n = bins.length;
+  const byDistance = labels.map((label, b) =>
+    group(`bin${b}`, label, colors[b] ?? SEQUENTIAL[6], n, (i) => bins[i] === b),
+  );
+  return [
+    ...byDistance.reverse(),
+    group('has', 'Has stiffness data', '#566074', n, (i) => bins[i] === null),
+  ];
+}
+
+/** "A model trained on N … MAE …" sentence for the extrapolation legend; null without data. */
+export function extrapolationSummary(atlas: Atlas): string | null {
+  const e = atlas.meta.extrapolation;
+  if (!e) return null;
+  const far = e.mae_by_distance.at(-1);
+  const farText =
+    far?.mae_gpa != null
+      ? ` On the ${fmtCount(far.n)} test materials in the farthest bin it was off by ${far.mae_gpa} GPa.`
+      : '';
+  return (
+    `For scale: a gradient-boosting model trained on ${fmtCount(e.n_train)} materials with ` +
+    `stiffness data predicts the bulk modulus of ${fmtCount(e.n_test)} held-out ones to within ` +
+    `${e.mae_gpa} GPa on average (guessing the median: ${e.baseline_mae_gpa} GPa).${farText} ` +
+    'Its predictions are not shown: this overlay only says how far a prediction would reach.'
+  );
 }
 
 /** Newer entries in sparse vs crowded areas stand out; older tiers recede to neutrals. */

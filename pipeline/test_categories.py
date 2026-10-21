@@ -2,7 +2,7 @@ import math
 
 import pandas as pd
 
-from categories import NONMETALS, assign_categories
+from categories import NONMETALS, UNCLASSIFIED_REASONS, assign_categories, unclassified_reasons
 
 NAN = math.nan
 
@@ -214,3 +214,44 @@ def test_candidate_metallic_branch_needs_metallic_composition():
     # TiN is metallic in DFT but half nitrogen: not a candidate alloy (and not a wide-gap oxide).
     _, flags = classify(material(elements=["N", "Ti"], nonmetal_fraction=0.5, min_abundance=19))
     assert not flags.iloc[0]["structural_candidate"]
+
+
+def reasons(*rows):
+    df = pd.DataFrame(rows)
+    primary, _ = assign_categories(df)
+    return unclassified_reasons(df, primary).tolist()
+
+
+def test_unclassified_reasons_one_per_bucket():
+    assert reasons(
+        material(),  # cheap stable metal-free oxide, no stiffness: one calculation decides it
+        material(band_gap=2.5, e_above_hull=0.3),  # semiconductor, only too unstable
+        material(elements=["Pt"], k_vrh=200, g_vrh=150, cost=3000.0),  # stiff but too expensive
+        material(k_vrh=40, g_vrh=10),  # computed, too soft
+        material(elements=["Pt"], min_abundance=0.005),  # stable scarce metal, no rule fits
+        material(elements=["Pt"], min_abundance=0.005, e_above_hull=0.3),  # unstable, no rule fits
+    ) == UNCLASSIFIED_REASONS
+
+
+def test_unclassified_reasons_skip_classified_materials():
+    assert reasons(material(band_gap=2.5), material()) == [None, "needs_stiffness"]
+
+
+def test_unphysical_stiffness_counts_as_missing():
+    # A broken fit on a non-candidate composition: a recalculation could still qualify it.
+    assert reasons(material(k_vrh=-5, g_vrh=60)) == ["needs_stiffness"]
+
+
+def test_needs_stiffness_outranks_stability_only():
+    # Within the 0.1 gate but outside the candidate rule's 0.05 cut: stiffness alone decides it.
+    assert reasons(material(band_gap=5.0, e_above_hull=0.08)) == ["needs_stiffness"]
+
+
+def test_two_blockers_is_no_single_fix():
+    # Unstable and too expensive: neither change alone qualifies it.
+    stiff_pricey = {"elements": ["Pt"], "k_vrh": 200, "g_vrh": 150, "cost": 3000.0}
+    assert reasons(material(**stiff_pricey, e_above_hull=0.3)) == ["unstable_no_rule"]
+    # Missing hull data fails the gate like an unstable entry.
+    assert reasons(material(elements=["Pt"], min_abundance=0.005, e_above_hull=NAN)) == [
+        "unstable_no_rule"
+    ]

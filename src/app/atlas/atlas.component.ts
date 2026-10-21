@@ -12,6 +12,7 @@ import {
 import { DecimalPipe } from '@angular/common';
 import { AtlasGuideComponent } from './atlas-guide.component';
 import { ParallelCoordinatesComponent } from './parallel-coordinates.component';
+import { UnclassifiedBreakdownComponent } from './unclassified-breakdown.component';
 import {
   contourDensity,
   geoPath,
@@ -39,9 +40,12 @@ import {
   entrySummary,
   extrapolationSummary,
   fmtNumber,
+  intersectMasks,
   materialDetail,
   multiCategoryCount,
+  reasonMask,
   similarMaterials,
+  unclassifiedBreakdown,
 } from './atlas-data';
 import {
   CATEGORY_HELP,
@@ -63,6 +67,8 @@ type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 const DATA_URL = 'data/atlas.json'; // relative: resolves against <base href> on GitHub Pages
 const PADDING = 24;
 const FILTERED_OUT = '#2b3343';
+/** Highlighted unclassified materials: their own grey would vanish against the dimmed rest. */
+const REASON_HIGHLIGHT = '#e2e8f0';
 // Density contour levels as fractions of peak density. Below ~2% the lines trace stray points.
 const CONTOUR_LEVELS = [0.02, 0.07, 0.25];
 const CONTOUR_BANDWIDTH = 8; // world px
@@ -95,7 +101,12 @@ const RULE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-atlas',
   standalone: true,
-  imports: [DecimalPipe, AtlasGuideComponent, ParallelCoordinatesComponent],
+  imports: [
+    DecimalPipe,
+    AtlasGuideComponent,
+    ParallelCoordinatesComponent,
+    UnclassifiedBreakdownComponent,
+  ],
   templateUrl: './atlas.component.html',
   styleUrl: './atlas.component.scss',
 })
@@ -132,6 +143,28 @@ export class AtlasComponent implements OnDestroy {
   protected readonly filterMask = signal<Uint8Array | null>(null);
   protected readonly filteredCount = computed(() => {
     const mask = this.filterMask();
+    return mask ? mask.reduce((n, v) => n + v, 0) : null;
+  });
+  /** Why-unclassified breakdown under the Unclassified row (null for older atlas files). */
+  protected readonly breakdown = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? unclassifiedBreakdown(atlas) : null;
+  });
+  protected readonly reasonsOpen = signal(false);
+  /** The reason whose materials are highlighted on the map, if any. */
+  protected readonly reasonKey = signal<string | null>(null);
+  protected readonly reasonRow = computed(
+    () => this.breakdown()?.find((r) => r.key === this.reasonKey()) ?? null,
+  );
+  private readonly reasonMask = computed(() => {
+    const atlas = this.atlas();
+    const key = this.reasonKey();
+    return atlas && key ? reasonMask(atlas, key) : null;
+  });
+  /** What the map shows as matches: property-profile brushes and the chosen reason together. */
+  private readonly mapMask = computed(() => intersectMasks(this.filterMask(), this.reasonMask()));
+  protected readonly highlightedCount = computed(() => {
+    const mask = this.reasonMask() && this.mapMask();
     return mask ? mask.reduce((n, v) => n + v, 0) : null;
   });
   protected readonly tooltipAt = signal({ x: 0, y: 0, flip: false, flipY: false });
@@ -251,7 +284,7 @@ export class AtlasComponent implements OnDestroy {
     effect(() => {
       this.hovered();
       this.selected();
-      this.filterMask();
+      this.mapMask();
       this.similarAnchor();
       untracked(() => this.scheduleDraw());
     });
@@ -275,6 +308,21 @@ export class AtlasComponent implements OnDestroy {
 
   protected showAll(): void {
     this.hidden.set(new Set());
+  }
+
+  /** Highlight one reason's materials on the map (again to clear), and bring the map into view. */
+  protected toggleReason(key: string): void {
+    const next = this.reasonKey() === key ? null : key;
+    this.reasonKey.set(next);
+    if (next === null) return;
+    if (this.overlayId() === 'category' && this.hidden().has('unclassified')) {
+      this.toggleGroup('unclassified');
+    }
+    const plot = this.plotRef().nativeElement;
+    const box = plot.getBoundingClientRect();
+    if (box.bottom < 0 || box.top > window.innerHeight) {
+      plot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   protected resetZoom(): void {
@@ -438,7 +486,8 @@ export class AtlasComponent implements OnDestroy {
     // Largest groups first so small groups sit on top instead of being buried.
     const order = [...this.groups()].sort((a, b) => b.indices.length - a.indices.length);
 
-    const mask = this.filterMask();
+    const mask = this.mapMask();
+    const reasonOn = this.reasonKey() !== null;
     const visible = order.filter((g) => !hidden.has(g.key));
     if (mask) {
       // Points outside the brushed profile recede to a neutral so the matching set stands out.
@@ -449,7 +498,8 @@ export class AtlasComponent implements OnDestroy {
     // Brushed matches are often sparse, so they draw a size up to stay findable.
     const matchR = mask ? r + 1 : r;
     for (const g of visible) {
-      this.drawGroup(ctx, g.indices, g.color, t, matchR, mask ? (i) => mask[i] === 1 : undefined);
+      const color = reasonOn && g.key === 'unclassified' ? REASON_HIGHLIGHT : g.color;
+      this.drawGroup(ctx, g.indices, color, t, matchR, mask ? (i) => mask[i] === 1 : undefined);
     }
     ctx.globalAlpha = 1;
 

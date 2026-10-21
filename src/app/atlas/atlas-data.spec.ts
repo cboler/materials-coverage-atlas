@@ -6,10 +6,13 @@ import {
   candidateCoverage,
   coverageRows,
   fmtNumber,
+  intersectMasks,
   legacyMaterialId,
   materialDetail,
   multiCategoryCount,
+  reasonMask,
   similarMaterials,
+  unclassifiedBreakdown,
 } from './atlas-data';
 import { FIXTURE } from './atlas-fixture';
 
@@ -343,5 +346,43 @@ describe('similarMaterials', () => {
 
   it('is empty for atlas files built before neighbors existed', () => {
     expect(similarMaterials(atlas, { ...anchor, similar: undefined }, 'similarity')).toEqual([]);
+  });
+});
+
+describe('why unclassified', () => {
+  // Pretend the magnet (index 1, predicted) and the no-data entry (index 3, predicted) are both
+  // unclassified, for different reasons; index 0 is made in a lab but classified.
+  const atlas = structuredClone(FIXTURE);
+  atlas.meta.unclassified_reasons = ['needs_stiffness', 'stability_only', 'unstable_no_rule'];
+  atlas.columns.unclassified_reason = [null, 0, null, 2];
+
+  it('counts each reason in order, with shares of the unclassified total and lab-made counts', () => {
+    const rows = unclassifiedBreakdown(atlas)!;
+    expect(rows.map((r) => [r.key, r.count, r.pct, r.labMade])).toEqual([
+      ['needs_stiffness', 1, 50, 0],
+      ['stability_only', 0, 0, 0],
+      ['unstable_no_rule', 1, 50, 0],
+    ]);
+    expect(rows[0].label).toBe('One stiffness calculation away');
+    expect(rows.every((r) => r.help)).toBe(true);
+    expect(unclassifiedBreakdown(FIXTURE)).toBeNull();
+  });
+
+  it('builds a map mask per reason and intersects it with the property-profile filter', () => {
+    expect([...reasonMask(atlas, 'unstable_no_rule')!]).toEqual([0, 0, 0, 1]);
+    expect(reasonMask(atlas, 'nope')).toBeNull();
+    expect(reasonMask(FIXTURE, 'needs_stiffness')).toBeNull();
+    const brushed = Uint8Array.from([1, 0, 1, 1]);
+    expect([...intersectMasks(brushed, reasonMask(atlas, 'unstable_no_rule'))!]).toEqual([
+      0, 0, 0, 1,
+    ]);
+    expect(intersectMasks(null, brushed)).toBe(brushed);
+    expect(intersectMasks(null, null)).toBeNull();
+  });
+
+  it('names the reason in the detail card, only for unclassified materials', () => {
+    expect(materialDetail(atlas, 1).unclassifiedReason).toBe('One stiffness calculation away');
+    expect(materialDetail(atlas, 0).unclassifiedReason).toBeNull();
+    expect(materialDetail(FIXTURE, 3).unclassifiedReason).toBeNull();
   });
 });

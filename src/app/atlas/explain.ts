@@ -94,6 +94,13 @@ export const TERMS = {
       'a wide-gap oxide mineral or a metal such as iron, aluminum or titanium. Because stiffness ' +
       'plays no part, the share of candidates with stiffness data is a fair measure of coverage.',
   },
+  unclassified_reason: {
+    label: 'Why unclassified',
+    text:
+      'What keeps a material out of every category, closest to qualifying first: a missing ' +
+      'stiffness calculation, stability alone, cost or scarcity alone, calculated as too soft, ' +
+      'or more than one thing. See the breakdown under "Coverage by category".',
+  },
 } satisfies Record<string, Term>;
 
 /** One-line, jargon-free meaning of each category (the technical rules are in the rules panel). */
@@ -112,6 +119,43 @@ export const CATEGORY_HELP: Record<string, string> = {
   magnetic: 'Keeps a net magnetic pull: candidates for magnets, motors and data storage.',
   unclassified:
     "Fits no rule: usually unstable, or missing the data needed to judge it. Not 'useless'.",
+};
+
+/**
+ * Why an unclassified material fits no rule, keyed like meta.unclassified_reasons and ordered from
+ * closest to qualifying to farthest (pipeline/categories.py, unclassified_reasons).
+ */
+export const UNCLASSIFIED_REASON_TEXT: Record<string, Term> = {
+  needs_stiffness: {
+    label: 'One stiffness calculation away',
+    text:
+      'Stable, cheap and made of common elements, but its stiffness was never calculated (or the ' +
+      'calculation failed). If it turns out stiff (shear 25 GPa or more), it counts as structural.',
+  },
+  stability_only: {
+    label: 'Held back only by stability',
+    text:
+      'Would fit a category if it were more stable. As computed, it sits too far above the most ' +
+      'stable mix of its elements to count.',
+  },
+  supply_only: {
+    label: 'Held back only by cost or scarcity',
+    text: "Stable, and would fit a category if its elements cost under $100/kg and none were rarer than 10 ppm in Earth's crust (or if the price or abundance were known). Many are stiff compounds of precious or rare-earth metals.",
+  },
+  too_soft: {
+    label: 'Calculated, too soft',
+    text: 'Stable and cheap, and its stiffness was calculated: too soft to carry loads (shear under 25 GPa).',
+  },
+  stable_no_rule: {
+    label: 'Stable, but no single fix',
+    text:
+      'Stable, but more than one thing keeps it out, so no single change would make it fit. ' +
+      'Mostly metals of costly or scarce elements with no stiffness data.',
+  },
+  unstable_no_rule: {
+    label: 'Unstable, and fits no rule',
+    text: 'Would tend to fall apart, and would fit no category even if it were stable (or its stability is unknown).',
+  },
 };
 
 export function describeGap(gap: Maybe<number>): string {

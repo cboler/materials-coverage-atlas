@@ -21,7 +21,16 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
 
-from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_categories, physical_elastic
+from categories import (
+    CATEGORIES,
+    NONMETALS,
+    RULES,
+    UNCLASSIFIED_REASONS,
+    WORKING_IONS,
+    assign_categories,
+    physical_elastic,
+    unclassified_reasons,
+)
 from electrodes import ELECTRODE_COLUMNS, electrode_validation
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
 from extrapolation import extrapolation
@@ -140,6 +149,8 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
         f"  structural candidates (moduli-blind rule): {candidates.sum()}, "
         f"{never.sum() / max(candidates.sum(), 1):.1%} never had stiffness calculated"
     )
+    reasons = unclassified_reasons(df, primary)
+    print("  why unclassified:", reasons.value_counts().reindex(UNCLASSIFIED_REASONS, fill_value=0).to_dict())
 
     print("Validating the battery-electrode rule against MP insertion electrodes...")
     validation = {}
@@ -218,6 +229,7 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "sampled": bool(sample),
             "coord_scale": COORD_SCALE,
             "categories": CATEGORIES,
+            "unclassified_reasons": UNCLASSIFIED_REASONS,
             "orderings": ORDERINGS,
             "rules": RULES,
             "validation": validation,
@@ -236,6 +248,9 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "structural_inferred": flags["structural_inferred"].astype(int).tolist(),
             # 1 = passes the moduli-blind structural-candidate rule (the fair coverage population).
             "structural_candidate": flags["structural_candidate"].astype(int).tolist(),
+            # Why an unclassified material fits no rule: index into meta.unclassified_reasons;
+            # null for classified materials (categories.py).
+            "unclassified_reason": [None if r is None else UNCLASSIFIED_REASONS.index(r) for r in reasons],
             # Entry age (see provenance.py): 0/1 = older tiers, 2 = newer & crowded, 3 = newer & sparse.
             "entry_group": entry_group.astype(int).tolist(),
             # Distance to the nearest stiffness data, binned (extrapolation.py); null = has data.

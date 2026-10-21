@@ -102,10 +102,28 @@ battery cathodes such as LiFePO4 (stable wide-gap oxides), where the narrower ru
 the use better. Moving all structural first would have recolored 1,143 energy entries.
 Multi-membership is never lost: the ``labels`` bitmask keeps every match and the detail card
 lists them.
+
+Why a material is unclassified (``unclassified_reasons``)
+    Each unclassified material gets exactly one reason: the first of these that applies, ordered
+    from closest to qualifying to farthest.
+      - needs_stiffness: passes the hull gate and the supply gate but has no usable elastic data.
+        One stiffness calculation decides it: physical moduli with G_VRH >= MIN_SHEAR would make
+        it verified structural.
+      - stability_only: would match a rule if it sat on the hull (energy above hull 0), with
+        every other property unchanged.
+      - supply_only: passes the hull gate and would match a rule if cost and abundance passed.
+      - too_soft: passes both gates and has usable elastic data, but G_VRH < MIN_SHEAR.
+      - stable_no_rule: passes the hull gate, but no single change above makes it match (mostly
+        metals of costly or scarce elements without stiffness data).
+      - unstable_no_rule: fails the hull gate (or has no hull data) and would match nothing even
+        on the hull.
 """
 
 from __future__ import annotations
 
+import math
+
+import numpy as np
 import pandas as pd
 
 CATEGORIES = [
@@ -275,3 +293,43 @@ def assign_categories(df: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame]:
     for category in reversed(PRIORITY):
         primary[flags[category]] = category
     return primary, flags
+
+
+UNCLASSIFIED_REASONS = [
+    "needs_stiffness",
+    "stability_only",
+    "supply_only",
+    "too_soft",
+    "stable_no_rule",
+    "unstable_no_rule",
+]
+
+
+def _matches_any(df: pd.DataFrame) -> pd.Series:
+    flags = candidate_flags(df)
+    return flags[[c for c in CATEGORIES if c != "unclassified"]].any(axis=1)
+
+
+def unclassified_reasons(df: pd.DataFrame, primary: pd.Series) -> pd.Series:
+    """One UNCLASSIFIED_REASONS key per unclassified material (None for classified ones).
+
+    The first reason that applies wins; see "Why a material is unclassified" in the module
+    docstring. "Would match" re-runs every rule with one property changed, so the reasons track
+    the rules automatically when thresholds move.
+    """
+    gate = df["e_above_hull"] <= MAX_E_HULL
+    supply = supply_ok(df)
+    usable = physical_elastic(df)
+    on_hull = _matches_any(df.assign(e_above_hull=0.0))
+    plentiful = _matches_any(df.assign(cost=0.0, min_abundance=math.inf))
+    conditions = [
+        gate & supply & ~usable,
+        on_hull,
+        gate & plentiful,
+        gate & supply & usable,
+        gate,
+    ]
+    reason = np.select(
+        [c.to_numpy() for c in conditions], UNCLASSIFIED_REASONS[:-1], default=UNCLASSIFIED_REASONS[-1]
+    )
+    return pd.Series(reason, index=df.index, dtype=object).where(primary == "unclassified", None)

@@ -91,6 +91,12 @@ See `docs/exec-plans/completed/2026-10-20-review-fixes.md` for the numbers behin
 - [x] **Property-profile axes**: short titles with units on a second line, category levels left of their axis, and axis positions computed from measured label widths (`axisPositions`), so labels never overlap or clip; a too-narrow plot scrolls inside its box. Playwright checks 390/768/800/1280 px.
 - [x] **MP IDs**: current IDs (`mp-aaaaaaan`) are base-26 encodings of the old numbers (mp-13); the detail card shows both. `materialsproject.org/materials/<id>` redirects to next-gen for both formats; next-gen itself sits behind a Cloudflare check, so links were not confirmed to render automatically.
 
+### Phase 5: Acting on the gaps (2026-10-21)
+
+- [x] **Why unclassified**: every unclassified material gets one reason, closest to qualifying first (`unclassified_reasons` in `categories.py`). On MP v2026.09.28: 5,428 one stiffness calculation away (stable, cheap, common elements, no usable moduli), 38,988 held back only by stability, 6,208 only by cost or scarcity, 384 calculated and too soft, 22,961 stable with no single fix, 14,520 unstable with no rule. Expandable bars under the Unclassified row light each group up on the map. See `docs/exec-plans/completed/2026-10-21-unclassified-breakdown.md`.
+- [ ] **DFT triage plot**: distance to the nearest stiffness data vs cost or instability for inferred structural candidates. Needs the continuous distance shipped: 4,012 of the 4,373 inferred candidates sit in the "close" bin.
+- [ ] **Bulk vs shear (Pugh) plot**: verified materials with the K/G = 1.75 line and landmarks. Estimated moduli for unverified materials would need a new ADR (predicted moduli are never shipped).
+
 ### Phase 3: Orientation and discovery
 
 Proposed after a review of recent visualization work (Embedding Atlas, PixelatedScatter, OptiMate). See ADR-009.

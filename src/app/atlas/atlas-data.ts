@@ -1,5 +1,5 @@
 /** Shape of public/data/atlas.json (written by pipeline/build_atlas.py) and pure helpers over it. */
-import { CATEGORY_HELP } from './explain';
+import { CATEGORY_HELP, UNCLASSIFIED_REASON_TEXT } from './explain';
 
 type Maybe<T> = T | null;
 
@@ -12,6 +12,8 @@ export interface AtlasMeta {
   sampled: boolean;
   coord_scale: number;
   categories: string[];
+  /** Keys for columns.unclassified_reason. Absent in atlas files built before it. */
+  unclassified_reasons?: string[];
   orderings: string[];
   rules: Record<string, string>;
   /** Rule checks computed by the pipeline. Absent in atlas files built before them. */
@@ -93,6 +95,8 @@ export interface AtlasColumns {
    * stiffness data. A coverage indicator only: no predicted moduli are shipped.
    */
   extrapolation?: Maybe<number>[];
+  /** Why an unclassified material fits no rule: index into meta.unclassified_reasons; null = classified. */
+  unclassified_reason?: Maybe<number>[];
   theoretical: number[];
   band_gap: Maybe<number>[];
   formation_energy: Maybe<number>[];
@@ -474,6 +478,58 @@ export function candidateCoverage(atlas: Atlas): { count: number; neverPct: numb
   return { count, neverPct: count ? (100 * never) / count : 0 };
 }
 
+export interface ReasonRow {
+  key: string;
+  label: string;
+  help: string;
+  count: number;
+  /** Share of all unclassified materials, 0-100. */
+  pct: number;
+  /** How many of them have been made in a lab. */
+  labMade: number;
+}
+
+/**
+ * Why the unclassified materials fit no rule, one row per reason (closest to qualifying first),
+ * or null for atlas files without the reason column.
+ */
+export function unclassifiedBreakdown(atlas: Atlas): ReasonRow[] | null {
+  const keys = atlas.meta.unclassified_reasons;
+  const col = atlas.columns.unclassified_reason;
+  if (!keys || !col) return null;
+  const counts = keys.map(() => 0);
+  const labMade = keys.map(() => 0);
+  let total = 0;
+  col.forEach((r, i) => {
+    if (r === null) return;
+    total++;
+    counts[r]++;
+    if (atlas.columns.theoretical[i] === 0) labMade[r]++;
+  });
+  return keys.map((key, r) => ({
+    key,
+    label: UNCLASSIFIED_REASON_TEXT[key]?.label ?? key,
+    help: UNCLASSIFIED_REASON_TEXT[key]?.text ?? '',
+    count: counts[r],
+    pct: total ? (100 * counts[r]) / total : 0,
+    labMade: labMade[r],
+  }));
+}
+
+/** 1 for materials unclassified for this reason, else 0; null when the atlas has no reasons. */
+export function reasonMask(atlas: Atlas, key: string): Uint8Array | null {
+  const r = atlas.meta.unclassified_reasons?.indexOf(key) ?? -1;
+  const col = atlas.columns.unclassified_reason;
+  if (r === -1 || !col) return null;
+  return Uint8Array.from(col, (v) => (v === r ? 1 : 0));
+}
+
+/** Materials in both masks (a null mask means "no filter"). */
+export function intersectMasks(a: Uint8Array | null, b: Uint8Array | null): Uint8Array | null {
+  if (!a || !b) return a ?? b;
+  return a.map((v, i) => v & b[i]);
+}
+
 export interface MaterialDetail {
   id: string;
   /** The older numeric ID ("mp-13") when ``id`` uses the current letter format, else null. */
@@ -487,6 +543,8 @@ export interface MaterialDetail {
   structuralBasis: Maybe<string>;
   /** Passes the moduli-blind structural-candidate rule (null for atlas files without the flag). */
   structuralCandidate: Maybe<boolean>;
+  /** Why it fits no rule (unclassified materials in atlas files with reasons), else null. */
+  unclassifiedReason: Maybe<string>;
   theoretical: boolean;
   bandGap: Maybe<number>;
   formationEnergy: Maybe<number>;
@@ -584,6 +642,7 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
       .map(categoryLabel),
     structuralBasis: basis,
     structuralCandidate: c.structural_candidate ? c.structural_candidate[i] === 1 : null,
+    unclassifiedReason: reasonLabel(atlas, i),
     theoretical: c.theoretical[i] === 1,
     bandGap: c.band_gap[i],
     formationEnergy: c.formation_energy[i],
@@ -596,6 +655,12 @@ export function materialDetail(atlas: Atlas, i: number): MaterialDetail {
     scarcest: c.scarcest[i],
     anchor: atlas.anchors.find((a) => a.index === i)?.name ?? null,
   };
+}
+
+function reasonLabel(atlas: Atlas, i: number): Maybe<string> {
+  const r = atlas.columns.unclassified_reason?.[i];
+  const key = r == null ? undefined : atlas.meta.unclassified_reasons?.[r];
+  return key ? (UNCLASSIFIED_REASON_TEXT[key]?.label ?? key) : null;
 }
 
 /**

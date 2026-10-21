@@ -1,0 +1,33 @@
+<p class="note">
+  Every unclassified material, sorted by what keeps it out, closest to qualifying first. Click a bar
+  to light those materials up on the map.
+</p>
+<ul class="reasons">
+  @for (r of rows(); track r.key) {
+    <li>
+      <button
+        type="button"
+        class="reason"
+        [id]="'reason-' + r.key"
+        [class.active]="active() === r.key"
+        [attr.aria-pressed]="active() === r.key"
+        (click)="pick.emit(r.key)"
+      >
+        <span class="reason-head">
+          <span class="reason-label">{{ r.label }}</span>
+          <span class="reason-count">
+            {{ r.count | number }}
+            <span class="muted">· {{ r.pct | number: '1.0-1' }}%</span>
+          </span>
+        </span>
+        <span class="reason-track" aria-hidden="true">
+          <span class="reason-bar" [style.width.%]="r.pct"></span>
+        </span>
+        <span class="reason-help">
+          {{ r.help }}
+          <span class="reason-lab">{{ r.labMade | number }} made in a lab.</span>
+        </span>
+      </button>
+    </li>
+  }
+</ul>

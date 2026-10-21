@@ -174,10 +174,25 @@
       @if (state() === 'ready') {
         <button type="button" class="reset" (click)="resetZoom()">Reset view</button>
       }
-      @if (filteredCount() !== null) {
-        <a class="filter-note" href="#pc-title">
-          {{ filteredCount() | number }} match the property-profile filters ↓
-        </a>
+      @if (filteredCount() !== null || reasonRow()) {
+        <div class="map-notes">
+          @if (filteredCount() !== null) {
+            <a class="filter-note" href="#pc-title">
+              {{ filteredCount() | number }} match the property-profile filters ↓
+            </a>
+          }
+          @if (reasonRow(); as r) {
+            <div class="filter-note reason-note" id="reason-note">
+              <span>
+                {{ highlightedCount() | number }} highlighted: {{ r.label }}
+                @if (filteredCount() !== null) {
+                  <span class="muted">(within the filters)</span>
+                }
+              </span>
+              <button type="button" class="link-button" (click)="reasonKey.set(null)">Clear</button>
+            </div>
+          }
+        </div>
       }
     </div>
 
@@ -268,6 +283,10 @@
                 {{ d.structuralCandidate ? 'Yes' : 'No' }}
                 <span class="muted">· composition rule, ignores stiffness</span>
               </dd>
+            }
+            @if (d.unclassifiedReason) {
+              <dt [title]="terms.unclassified_reason.text">Why unclassified</dt>
+              <dd>{{ d.unclassifiedReason }}</dd>
             }
             <dt [title]="terms.theoretical.text">Origin</dt>
             <dd>{{ describe.origin(d.theoretical) }}</dd>
@@ -456,6 +475,18 @@
                   @if (row.kind === 'candidates') {
                     <span class="row-note">ignores stiffness; overlaps the rows above</span>
                   }
+                  @if (row.key === 'unclassified' && breakdown()) {
+                    <button
+                      type="button"
+                      class="link-button reasons-toggle"
+                      id="reasons-toggle"
+                      aria-controls="reasons-row"
+                      [attr.aria-expanded]="reasonsOpen()"
+                      (click)="reasonsOpen.set(!reasonsOpen())"
+                    >
+                      {{ reasonsOpen() ? '▾' : '▸' }} Why unclassified?
+                    </button>
+                  }
                 </th>
                 <td>{{ row.count | number }}</td>
                 <td>{{ row.experimentalPct | number: '1.0-1' }}%</td>
@@ -469,6 +500,17 @@
                 </td>
                 <td>{{ row.costPct | number: '1.0-1' }}%</td>
               </tr>
+              @if (row.key === 'unclassified' && reasonsOpen() && breakdown(); as reasons) {
+                <tr class="reasons-row" id="reasons-row">
+                  <td colspan="5">
+                    <app-unclassified-breakdown
+                      [rows]="reasons"
+                      [active]="reasonKey()"
+                      (pick)="toggleReason($event)"
+                    />
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>

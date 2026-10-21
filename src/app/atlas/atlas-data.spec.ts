@@ -1,5 +1,7 @@
 import {
+  availableOverlays,
   buildGroups,
+  entrySummary,
   candidateCoverage,
   coverageRows,
   fmtNumber,
@@ -115,6 +117,57 @@ describe('structural metallic/ceramic split', () => {
     expect(iron.category).toBe('Magnetic');
     expect(iron.otherCategories).toEqual(['Structural – metallic/alloy']);
     expect(iron.structuralBasis).toMatch(/^Verified/);
+  });
+});
+
+describe('newer-entries overlay', () => {
+  const withEntries = () => {
+    const atlas = structuredClone(FIXTURE);
+    atlas.columns.entry_group = [0, 1, 2, 3];
+    atlas.meta.provenance = {
+      basis: 'entry order',
+      tier_edges: [1_000_000, 1_500_000],
+      tier_labels: ['before ~2017', '~2017–2020', '~2020 onward'],
+      ml_origin_note: 'none',
+      knn: {
+        k: 10,
+        newer: 13441,
+        older: 140936,
+        median_newer_to_older: 0.452,
+        median_older_to_older: 0.438,
+        share_newer_sparse: 0.128,
+        share_expected: 0.25,
+      },
+    };
+    return atlas;
+  };
+
+  it('is only offered when the atlas has entry groups', () => {
+    expect(availableOverlays(FIXTURE).map((o) => o.id)).not.toContain('entry');
+    expect(availableOverlays(withEntries()).map((o) => o.id)).toContain('entry');
+  });
+
+  it('puts newer sparse and crowded entries first, older tiers after', () => {
+    const groups = buildGroups(withEntries(), 'entry');
+    expect(groups.map((g) => [g.key, g.indices])).toEqual([
+      ['new_sparse', [3]],
+      ['new_crowded', [2]],
+      ['mid', [1]],
+      ['old', [0]],
+    ]);
+    expect(groups[0].label).toBe('Added ~2020 onward, sparse area');
+  });
+
+  it('summarizes whether newer entries fill gaps or crowd clusters', () => {
+    const atlas = withEntries();
+    expect(entrySummary(atlas)).toBe(
+      'Of 13,441 entries added ~2020 onward, 13% land in sparse areas, against 25% if they ' +
+        "matched the older materials' spread, so most newer entries crowd existing clusters " +
+        'rather than filling gaps.',
+    );
+    atlas.meta.provenance!.knn.share_newer_sparse = 0.4;
+    expect(entrySummary(atlas)).toContain('lean toward filling gaps');
+    expect(entrySummary(FIXTURE)).toBeNull();
   });
 });
 

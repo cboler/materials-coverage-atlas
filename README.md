@@ -8,8 +8,9 @@ coverage is thin.
 - **Categories**: structural (metallic/alloy and mineral/ceramic), energy, electronic/optical,
   magnetic, unclassified. The rules are
   documented in [`pipeline/categories.py`](pipeline/categories.py) and shown in the app.
-- **Overlays**: element abundance, element cost, experimental vs. theoretical, and elastic-data
-  coverage (which entries lack bulk/shear moduli).
+- **Overlays**: element abundance, element cost, experimental vs. theoretical, elastic-data
+  coverage (which entries lack bulk/shear moduli), and newer entries (added ~2020 onward, split
+  by whether they land in sparse or crowded parts of feature space).
 - **Anchors**: calcite, gypsum, portlandite, alite, belite, quartz, corundum, iron and aluminum
   are pinned and labeled as reference points.
 - **Region labels and density contours**: islands of the map are named by their dominant chemistry
@@ -127,6 +128,12 @@ Open `http://localhost:4200/`. Without `public/data/atlas.json` the page shows s
   compounds with a working ion that never appear as an electrode framework); some of those are
   real but uncomputed electrodes, so treat it as a lower bound. The pipeline recomputes both
   (`pipeline/electrodes.py`) and the app shows them under Category rules.
+- Materials Project publishes no per-entry marker of machine-learning origin; GNoME-derived
+  entries are an access-controlled batch and are not in the public data or this atlas.
+  Provenance `created_at` dates are mostly bulk-rebuild stamps (88% of entries), so the
+  newer-entries overlay orders entries by their old numeric ID, which was assigned as entries
+  were added. On MP v2026.09.28, 12.8% of the 13,441 newer entries land in sparse regions
+  (25% would match the older spread): they mostly crowd existing clusters.
 - Element cost is the mass-weighted raw element price. It ignores processing, so treat it as a
   floor. Abundance is the crustal abundance of the scarcest element in the formula. Both come
   from the `mendeleev` element table.

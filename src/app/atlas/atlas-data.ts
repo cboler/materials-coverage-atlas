@@ -16,6 +16,30 @@ export interface AtlasMeta {
   rules: Record<string, string>;
   /** Rule checks computed by the pipeline. Absent in atlas files built before them. */
   validation?: { battery_electrode?: ElectrodeValidation };
+  /** Entry age and where newer entries land (pipeline/provenance.py). */
+  provenance?: ProvenanceSummary;
+}
+
+export interface ProvenanceSummary {
+  basis: string;
+  tier_edges: number[];
+  /** Approximate era of each old-ID tier, oldest first. */
+  tier_labels: string[];
+  ml_origin_note: string;
+  knn: {
+    k: number;
+    newer: number;
+    older: number;
+    median_newer_to_older: number;
+    median_older_to_older: number;
+    share_newer_sparse: number;
+    share_expected: number;
+  };
+  created_at?: {
+    rebuild_dates: string[];
+    rebuild_share: number;
+    median_created_year_by_tier: Record<string, number>;
+  };
 }
 
 /** Battery-electrode rule vs MP insertion electrodes (pipeline/electrodes.py). */
@@ -49,6 +73,8 @@ export interface AtlasColumns {
   structural_inferred?: number[];
   /** 1 = passes the moduli-blind structural-candidate rule. Absent in older atlas files. */
   structural_candidate?: number[];
+  /** Entry age: 0/1 = older tiers, 2 = newer in a crowded area, 3 = newer in a sparse area. */
+  entry_group?: number[];
   theoretical: number[];
   band_gap: Maybe<number>[];
   formation_energy: Maybe<number>[];
@@ -75,12 +101,14 @@ export interface Atlas {
   anchors: Anchor[];
 }
 
-export type OverlayId = 'category' | 'experimental' | 'elastic' | 'abundance' | 'cost';
+export type OverlayId = 'category' | 'experimental' | 'elastic' | 'abundance' | 'cost' | 'entry';
 
 export interface Overlay {
   id: OverlayId;
   label: string;
   note: string;
+  /** Column the overlay needs; it is hidden for atlas files without it. */
+  requires?: keyof AtlasColumns;
 }
 
 export interface Group {
@@ -120,7 +148,39 @@ export const OVERLAYS: Overlay[] = [
     label: 'Cost',
     note: 'Raw price of the elements in 1 kg of the material, ignoring processing. Brighter means more expensive.',
   },
+  {
+    id: 'entry',
+    label: 'Newer entries',
+    note: 'When each material was added, read from its Materials Project ID (IDs were handed out in order; per-entry dates are too coarse to use). Newer entries are split by whether their closest older materials, across all ~100 traits, are unusually far away (a sparse area) or not (a crowded area). No public field says whether an entry came from a machine-learning pipeline.',
+    requires: 'entry_group',
+  },
 ];
+
+/** Overlays this atlas file has the data for. */
+export function availableOverlays(atlas: Atlas | null): Overlay[] {
+  return OVERLAYS.filter((o) => !o.requires || atlas?.columns[o.requires]);
+}
+
+/**
+ * One-sentence answer to "are newer entries filling gaps or crowding clusters?", or null for atlas
+ * files without the provenance summary.
+ */
+export function entrySummary(atlas: Atlas): string | null {
+  const p = atlas.meta.provenance;
+  if (!p) return null;
+  const { newer, share_newer_sparse: sparse, share_expected: expected } = p.knn;
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const verdict =
+    sparse < expected * 0.8
+      ? 'so most newer entries crowd existing clusters rather than filling gaps'
+      : sparse > expected * 1.2
+        ? 'so newer entries lean toward filling gaps'
+        : 'about what you would expect if they followed the existing spread';
+  return (
+    `Of ${fmtCount(newer)} entries added ${p.tier_labels.at(-1)}, ${pct(sparse)} land in sparse ` +
+    `areas, against ${pct(expected)} if they matched the older materials' spread, ${verdict}.`
+  );
+}
 
 // Categorical slots 1-4 of the validated dark palette; unclassified is a recessive neutral. The two
 // structural kinds share the blue family: slot 1 for metals, blue step 200 for minerals/ceramics.
@@ -179,7 +239,28 @@ export function buildGroups(atlas: Atlas, overlay: OverlayId): Group[] {
       return binGroups(c.abundance, ABUNDANCE_THRESHOLDS, '', ' ppm');
     case 'cost':
       return binGroups(c.cost, COST_THRESHOLDS, '$', '/kg');
+    case 'entry':
+      return entryGroups(atlas);
   }
+}
+
+/** Newer entries in sparse vs crowded areas stand out; older tiers recede to neutrals. */
+function entryGroups(atlas: Atlas): Group[] {
+  const g = atlas.columns.entry_group ?? [];
+  const eras = atlas.meta.provenance?.tier_labels ?? ['oldest', 'middle', 'newest'];
+  const n = g.length;
+  return [
+    {
+      ...group('new_sparse', `Added ${eras[2]}, sparse area`, '#d95926', n, (i) => g[i] === 3),
+      help: 'Far from older materials: fills a gap.',
+    },
+    {
+      ...group('new_crowded', `Added ${eras[2]}, crowded area`, '#3987e5', n, (i) => g[i] === 2),
+      help: 'Close to many older materials: adds to an existing cluster.',
+    },
+    group('mid', `Added ${eras[1]}`, '#566074', n, (i) => g[i] === 1),
+    group('old', `Added ${eras[0]}`, NO_DATA_COLOR, n, (i) => g[i] === 0),
+  ];
 }
 
 function binGroups(values: Maybe<number>[], thresholds: number[], prefix: string, unit: string) {

@@ -77,13 +77,29 @@ axis layout. One commit per phase, with tests for every rule change.
   flagged. Typical misses: no listed redox metal (Sb, Sn, Tl, Re), spectator Sr/Ba, alloys.
   Typical "false positives" look like real cathode chemistries (Li–Mn–Co–O, Li–Ti–Cr–O).
 
+### Phase 5: provenance and newer entries
+
+- Available per entry: `theoretical`; `database_IDs` (ICSD 51.7k, Pauling 15.9k); provenance
+  `created_at`, authors, remarks, tags, `history` (structure sources: ICSD, Pauling, pymatgen
+  substitution transforms ~7.3k, MIT JCMC ~3.1k); `builder_meta.batch_id` (batch of the current
+  calculation, e.g. `vasp6-statics-jan2021`, not origin). No ML-origin field. The API heartbeat
+  lists `gnome_r2scan_statics` as access-controlled; our pull equals the public non-deprecated
+  count (154,377), so the atlas has no GNoME entries.
+- `created_at`: 88% of entries sit on three bulk dates (2016-04-20, 2017-07-18, 2024-11-22);
+  iron (mp-13) shows 2017. Too coarse; fell back to entry order from the old numeric ID
+  (new IDs are base-26 with a = 0). Tier medians of `created_at` off the rebuild dates: < 1.0M
+  → 2012, 1.0–1.5M → 2017, ≥ 1.5M → 2022.
+- k-NN (k = 10, UMAP feature space): 13,441 newer entries; median distance to older 0.452 vs
+  0.438 for older-to-older (20k sample); 12.8% beyond the older 75th percentile (25% expected).
+  99.6% of newer entries are predicted-only.
+
 ## 4. Implementation Steps
 
 - [x] **Phase 1**: candidate rule, verified/inferred split in legend, card and table.
 - [x] **Phase 2**: metallic vs mineral/ceramic split, cost/abundance gate on the verified path.
 - [x] **Phase 3**: coloring order / multi-membership.
 - [x] **Phase 4**: electrode precision/recall against MP insertion electrodes.
-- [ ] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
+- [x] **Phase 5**: provenance overlay (newer entries: sparse vs crowded regions).
 - [ ] **Phase 6**: extrapolation-distance overlay.
 - [ ] **Phase 7**: shareable figure.
 - [ ] **Phase 8**: property-profile axis layout, MP link check.

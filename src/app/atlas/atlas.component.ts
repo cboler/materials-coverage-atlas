@@ -31,10 +31,12 @@ import {
   OVERLAYS,
   OverlayId,
   SimilarSort,
+  availableOverlays,
   buildGroups,
   candidateCoverage,
   categoryLabel,
   coverageRows,
+  entrySummary,
   fmtNumber,
   materialDetail,
   multiCategoryCount,
@@ -95,7 +97,6 @@ export class AtlasComponent implements OnDestroy {
   private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly svgRef = viewChild.required<ElementRef<SVGSVGElement>>('svg');
 
-  protected readonly overlays = OVERLAYS;
   protected readonly fmt = fmtNumber;
   protected readonly terms = TERMS;
   protected readonly glossary = Object.values(TERMS);
@@ -106,6 +107,11 @@ export class AtlasComponent implements OnDestroy {
     origin: describeOrigin,
   };
   protected readonly atlas = signal<Atlas | null>(null);
+  protected readonly overlays = computed(() => availableOverlays(this.atlas()));
+  protected readonly entrySummary = computed(() => {
+    const atlas = this.atlas();
+    return atlas ? entrySummary(atlas) : null;
+  });
   protected readonly state = signal<LoadState>('loading');
   protected readonly overlayId = signal<OverlayId>('category');
   protected readonly hidden = signal<ReadonlySet<string>>(new Set());

@@ -24,7 +24,7 @@
 
   <div class="toolbar">
     <div class="chip-group" role="radiogroup" aria-label="Color the map by">
-      @for (o of overlays; track o.id) {
+      @for (o of overlays(); track o.id) {
         <button
           type="button"
           role="radio"
@@ -162,6 +162,9 @@
         <button type="button" class="link-button" (click)="showAll()">Show all</button>
       }
       <p class="note">{{ overlayNote() }}</p>
+      @if (overlayId() === 'entry' && entrySummary(); as summary) {
+        <p class="note entry-summary" id="entry-summary">{{ summary }}</p>
+      }
       @if (overlayId() === 'category' && multiCount()) {
         <p class="note" id="multi-note">
           {{ multiCount() | number }} materials match more than one category. Each dot takes the

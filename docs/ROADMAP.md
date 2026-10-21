@@ -85,6 +85,7 @@ See `docs/exec-plans/completed/2026-10-20-review-fixes.md` for the numbers behin
 - [x] **Structural means structural**: split into metallic/alloy and mineral/ceramic (metallic = band gap 0 and nonmetals < 50% of atoms), and a supply gate (cost ≤ $100/kg, every element ≥ 10 ppm) on both paths. The verified-path gate removes 5,084, the candidate cost cap 565, the alloy-composition test 31. Primary structural 10,915 → 5,744 (987 metallic, 4,757 ceramic); candidates 6,595 → 5,929 (90.3% never calculated).
 - [x] **Coloring order**: structural metals now rank ahead of magnetic (ADR-010), so iron and aluminum color as structural; 225 entries move (205 from magnetic, 20 from energy). The legend notes that 20,220 materials match several categories.
 - [x] **Electrode rule precision/recall** against MP's 6,847 insertion electrodes (public open-data Delta table, no API key): recall 0.86 within the 0.05 eV/atom window (3,584 of 4,154), 0.31 over all 11,698 intercalated states; precision 0.50 against 16,646 approximate negatives. Shown under Category rules and stored in `meta.validation`.
+- [x] **Newer entries overlay**: no public ML-origin marker (GNoME is the access-controlled `gnome_r2scan_statics` batch); `created_at` is 88% bulk-rebuild stamps, so entry order comes from the old numeric ID (tier medians: 2012, 2017, 2022). 13,441 entries added ~2020 onward: median 10-NN distance to older entries 0.452 vs 0.438 among older; 12.8% in sparse regions vs 25% expected. They mostly crowd existing clusters.
 
 ### Phase 3: Orientation and discovery
 

@@ -25,6 +25,7 @@ from categories import CATEGORIES, NONMETALS, RULES, WORKING_IONS, assign_catego
 from electrodes import ELECTRODE_COLUMNS, electrode_validation
 from embed import BLOCK_WEIGHTS, UMAP_PARAMS, embed, feature_matrix, nearest_neighbors
 from fetch import load_open_data, load_summary
+from provenance import NEWER_TIER, TIER_EDGES, TIER_LABELS, entry_tier, legacy_number, novelty, tier_calibration
 from supply import supply_metrics
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "public" / "data" / "atlas.json"
@@ -161,6 +162,37 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
     lo, hi = coords.min(axis=0), coords.max(axis=0)
     quantized = np.rint((coords - lo) / (hi - lo).max() * COORD_SCALE).astype(int)
 
+    print("Entry age: where do newer entries land?")
+    numbers = df["material_id"].map(legacy_number)
+    tiers = entry_tier(numbers)
+    newer = (tiers == NEWER_TIER).to_numpy()
+    found = novelty(features, newer)
+    sparse = found.pop("sparse")
+    # 0 = oldest tier, 1 = middle tier, 2 = newer & crowded neighborhood, 3 = newer & sparse.
+    entry_group = np.where(newer, np.where(sparse, 3, 2), tiers.to_numpy())
+    provenance = {
+        "basis": "entry order from the old numeric Materials Project ID",
+        "tier_edges": TIER_EDGES,
+        "tier_labels": TIER_LABELS,
+        "ml_origin_marker": None,
+        "ml_origin_note": (
+            "No public per-entry marker of ML-pipeline origin. GNoME-derived entries are the "
+            "access-controlled gnome_r2scan_statics batch and are not in this atlas."
+        ),
+        "knn": found,
+    }
+    try:
+        prov = load_open_data("provenance", cache_meta["database_version"], ["material_id", "created_at"])
+        created = df[["material_id"]].merge(prov, how="left")["created_at"]
+        provenance["created_at"] = tier_calibration(numbers, created)
+    except Exception as exc:
+        print(f"  ! provenance dates skipped: {exc}")
+    print(
+        f"  {found['newer']} newer entries: median k-NN distance to older {found['median_newer_to_older']} "
+        f"vs {found['median_older_to_older']} among older; {found['share_newer_sparse']:.1%} in sparse "
+        f"regions ({found['share_expected']:.0%} expected if they followed the existing spread)"
+    )
+
     # Bit i set = candidate for CATEGORIES[i] (multi-label; "category" holds the primary one).
     label_bits = sum(flags[c].astype(int) * (1 << i) for i, c in enumerate(CATEGORIES[:-1]))
     index_of = {mid: i for i, mid in enumerate(df["material_id"])}
@@ -178,6 +210,7 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "orderings": ORDERINGS,
             "rules": RULES,
             "validation": validation,
+            "provenance": provenance,
             "umap": {**UMAP_PARAMS, "block_weights": BLOCK_WEIGHTS},
         },
         "columns": {
@@ -191,6 +224,8 @@ def build(refresh: bool, sample: int | None, out_path: Path) -> None:
             "structural_inferred": flags["structural_inferred"].astype(int).tolist(),
             # 1 = passes the moduli-blind structural-candidate rule (the fair coverage population).
             "structural_candidate": flags["structural_candidate"].astype(int).tolist(),
+            # Entry age (see provenance.py): 0/1 = older tiers, 2 = newer & crowded, 3 = newer & sparse.
+            "entry_group": entry_group.astype(int).tolist(),
             "theoretical": df["theoretical"].fillna(True).astype(int).tolist(),
             "band_gap": _round(df["band_gap"], 2),
             "formation_energy": _round(df["formation_energy"], 3),
